@@ -1,0 +1,1185 @@
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 1
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"user_lib.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.file 1 "modules/algorithm/user_lib.c"
+  20              		.section	.text.zmalloc,"ax",%progbits
+  21              		.align	1
+  22              		.global	zmalloc
+  23              		.syntax unified
+  24              		.thumb
+  25              		.thumb_func
+  27              	zmalloc:
+  28              	.LVL0:
+  29              	.LFB273:
+   1:modules/algorithm/user_lib.c **** /**
+   2:modules/algorithm/user_lib.c ****  ******************************************************************************
+   3:modules/algorithm/user_lib.c ****  * @file	 user_lib.c
+   4:modules/algorithm/user_lib.c ****  * @author  Wang Hongxi
+   5:modules/algorithm/user_lib.c ****  * @author  modified by neozng
+   6:modules/algorithm/user_lib.c ****  * @version 0.2 beta
+   7:modules/algorithm/user_lib.c ****  * @date    2021/2/18
+   8:modules/algorithm/user_lib.c ****  * @brief
+   9:modules/algorithm/user_lib.c ****  ******************************************************************************
+  10:modules/algorithm/user_lib.c ****  * @attention
+  11:modules/algorithm/user_lib.c ****  *
+  12:modules/algorithm/user_lib.c ****  ******************************************************************************
+  13:modules/algorithm/user_lib.c ****  */
+  14:modules/algorithm/user_lib.c **** #include "stdlib.h"
+  15:modules/algorithm/user_lib.c **** #include "memory.h"
+  16:modules/algorithm/user_lib.c **** #include "user_lib.h"
+  17:modules/algorithm/user_lib.c **** #include "math.h"
+  18:modules/algorithm/user_lib.c **** #include "main.h"
+  19:modules/algorithm/user_lib.c **** 
+  20:modules/algorithm/user_lib.c **** #ifdef _CMSIS_OS_H
+  21:modules/algorithm/user_lib.c **** #define user_malloc pvPortMalloc
+  22:modules/algorithm/user_lib.c **** #else
+  23:modules/algorithm/user_lib.c **** #define user_malloc malloc
+  24:modules/algorithm/user_lib.c **** #endif
+  25:modules/algorithm/user_lib.c **** 
+  26:modules/algorithm/user_lib.c **** void *zmalloc(size_t size)
+  27:modules/algorithm/user_lib.c **** {
+  30              		.loc 1 27 1 view -0
+  31              		.cfi_startproc
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 2
+
+
+  32              		@ args = 0, pretend = 0, frame = 0
+  33              		@ frame_needed = 0, uses_anonymous_args = 0
+  34              		.loc 1 27 1 is_stmt 0 view .LVU1
+  35 0000 38B5     		push	{r3, r4, r5, lr}
+  36              	.LCFI0:
+  37              		.cfi_def_cfa_offset 16
+  38              		.cfi_offset 3, -16
+  39              		.cfi_offset 4, -12
+  40              		.cfi_offset 5, -8
+  41              		.cfi_offset 14, -4
+  42 0002 0546     		mov	r5, r0
+  28:modules/algorithm/user_lib.c ****     void *ptr = malloc(size);
+  43              		.loc 1 28 5 is_stmt 1 view .LVU2
+  44              		.loc 1 28 17 is_stmt 0 view .LVU3
+  45 0004 FFF7FEFF 		bl	malloc
+  46              	.LVL1:
+  47              		.loc 1 28 17 view .LVU4
+  48 0008 0446     		mov	r4, r0
+  49              	.LVL2:
+  29:modules/algorithm/user_lib.c ****     memset(ptr, 0, size);
+  50              		.loc 1 29 5 is_stmt 1 view .LVU5
+  51 000a 2A46     		mov	r2, r5
+  52 000c 0021     		movs	r1, #0
+  53 000e FFF7FEFF 		bl	memset
+  54              	.LVL3:
+  30:modules/algorithm/user_lib.c ****     return ptr;
+  55              		.loc 1 30 5 view .LVU6
+  31:modules/algorithm/user_lib.c **** }
+  56              		.loc 1 31 1 is_stmt 0 view .LVU7
+  57 0012 2046     		mov	r0, r4
+  58 0014 38BD     		pop	{r3, r4, r5, pc}
+  59              		.loc 1 31 1 view .LVU8
+  60              		.cfi_endproc
+  61              	.LFE273:
+  63              		.section	.text.Sqrt,"ax",%progbits
+  64              		.align	1
+  65              		.global	Sqrt
+  66              		.syntax unified
+  67              		.thumb
+  68              		.thumb_func
+  70              	Sqrt:
+  71              	.LVL4:
+  72              	.LFB274:
+  32:modules/algorithm/user_lib.c **** 
+  33:modules/algorithm/user_lib.c **** // 快速开方
+  34:modules/algorithm/user_lib.c **** float Sqrt(float x)
+  35:modules/algorithm/user_lib.c **** {
+  73              		.loc 1 35 1 is_stmt 1 view -0
+  74              		.cfi_startproc
+  75              		@ args = 0, pretend = 0, frame = 0
+  76              		@ frame_needed = 0, uses_anonymous_args = 0
+  77              		@ link register save eliminated.
+  78              		.loc 1 35 1 is_stmt 0 view .LVU10
+  79 0000 F0EE405A 		vmov.f32	s11, s0
+  36:modules/algorithm/user_lib.c ****     float y;
+  80              		.loc 1 36 5 is_stmt 1 view .LVU11
+  37:modules/algorithm/user_lib.c ****     float delta;
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 3
+
+
+  81              		.loc 1 37 5 view .LVU12
+  38:modules/algorithm/user_lib.c ****     float maxError;
+  82              		.loc 1 38 5 view .LVU13
+  39:modules/algorithm/user_lib.c **** 
+  40:modules/algorithm/user_lib.c ****     if (x <= 0)
+  83              		.loc 1 40 5 view .LVU14
+  84              		.loc 1 40 8 is_stmt 0 view .LVU15
+  85 0004 B5EEC00A 		vcmpe.f32	s0, #0
+  86 0008 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+  87 000c 1ED9     		bls	.L6
+  41:modules/algorithm/user_lib.c ****     {
+  42:modules/algorithm/user_lib.c ****         return 0;
+  43:modules/algorithm/user_lib.c ****     }
+  44:modules/algorithm/user_lib.c **** 
+  45:modules/algorithm/user_lib.c ****     // initial guess
+  46:modules/algorithm/user_lib.c ****     y = x / 2;
+  88              		.loc 1 46 5 is_stmt 1 view .LVU16
+  89              		.loc 1 46 7 is_stmt 0 view .LVU17
+  90 000e F6EE007A 		vmov.f32	s15, #5.0e-1
+  91 0012 20EE270A 		vmul.f32	s0, s0, s15
+  92              	.LVL5:
+  47:modules/algorithm/user_lib.c **** 
+  48:modules/algorithm/user_lib.c ****     // refine
+  49:modules/algorithm/user_lib.c ****     maxError = x * 0.001f;
+  93              		.loc 1 49 5 is_stmt 1 view .LVU18
+  94              		.loc 1 49 14 is_stmt 0 view .LVU19
+  95 0016 9FED0F6A 		vldr.32	s12, .L7
+  96 001a 25EE866A 		vmul.f32	s12, s11, s12
+  97              	.LVL6:
+  98              	.L5:
+  50:modules/algorithm/user_lib.c **** 
+  51:modules/algorithm/user_lib.c ****     do
+  99              		.loc 1 51 5 is_stmt 1 view .LVU20
+  52:modules/algorithm/user_lib.c ****     {
+  53:modules/algorithm/user_lib.c ****         delta = (y * y) - x;
+ 100              		.loc 1 53 9 view .LVU21
+ 101              		.loc 1 53 20 is_stmt 0 view .LVU22
+ 102 001e 60EE007A 		vmul.f32	s15, s0, s0
+ 103              		.loc 1 53 15 view .LVU23
+ 104 0022 77EEE57A 		vsub.f32	s15, s15, s11
+ 105              	.LVL7:
+  54:modules/algorithm/user_lib.c ****         y -= delta / (2 * y);
+ 106              		.loc 1 54 9 is_stmt 1 view .LVU24
+ 107              		.loc 1 54 25 is_stmt 0 view .LVU25
+ 108 0026 70EE006A 		vadd.f32	s13, s0, s0
+ 109              		.loc 1 54 20 view .LVU26
+ 110 002a 87EEA67A 		vdiv.f32	s14, s15, s13
+ 111              		.loc 1 54 11 view .LVU27
+ 112 002e 30EE470A 		vsub.f32	s0, s0, s14
+ 113              	.LVL8:
+  55:modules/algorithm/user_lib.c ****     } while (delta > maxError || delta < -maxError);
+ 114              		.loc 1 55 31 is_stmt 1 discriminator 3 view .LVU28
+ 115 0032 B4EEE76A 		vcmpe.f32	s12, s15
+ 116 0036 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 117 003a F0D4     		bmi	.L5
+ 118              		.loc 1 55 42 is_stmt 0 discriminator 2 view .LVU29
+ 119 003c B1EE467A 		vneg.f32	s14, s12
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 4
+
+
+ 120              		.loc 1 55 31 discriminator 2 view .LVU30
+ 121 0040 B4EEE77A 		vcmpe.f32	s14, s15
+ 122 0044 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 123 0048 E9DC     		bgt	.L5
+ 124 004a 7047     		bx	lr
+ 125              	.LVL9:
+ 126              	.L6:
+  42:modules/algorithm/user_lib.c ****     }
+ 127              		.loc 1 42 16 view .LVU31
+ 128 004c 9FED020A 		vldr.32	s0, .L7+4
+ 129              	.LVL10:
+  56:modules/algorithm/user_lib.c **** 
+  57:modules/algorithm/user_lib.c ****     return y;
+  58:modules/algorithm/user_lib.c **** }
+ 130              		.loc 1 58 1 view .LVU32
+ 131 0050 7047     		bx	lr
+ 132              	.L8:
+ 133 0052 00BF     		.align	2
+ 134              	.L7:
+ 135 0054 6F12833A 		.word	981668463
+ 136 0058 00000000 		.word	0
+ 137              		.cfi_endproc
+ 138              	.LFE274:
+ 140              		.section	.text.abs_limit,"ax",%progbits
+ 141              		.align	1
+ 142              		.global	abs_limit
+ 143              		.syntax unified
+ 144              		.thumb
+ 145              		.thumb_func
+ 147              	abs_limit:
+ 148              	.LVL11:
+ 149              	.LFB275:
+  59:modules/algorithm/user_lib.c **** 
+  60:modules/algorithm/user_lib.c **** // 绝对值限制
+  61:modules/algorithm/user_lib.c **** float abs_limit(float num, float Limit)
+  62:modules/algorithm/user_lib.c **** {
+ 150              		.loc 1 62 1 is_stmt 1 view -0
+ 151              		.cfi_startproc
+ 152              		@ args = 0, pretend = 0, frame = 0
+ 153              		@ frame_needed = 0, uses_anonymous_args = 0
+ 154              		@ link register save eliminated.
+ 155              		.loc 1 62 1 is_stmt 0 view .LVU34
+ 156 0000 F0EE407A 		vmov.f32	s15, s0
+ 157 0004 B0EE600A 		vmov.f32	s0, s1
+ 158              	.LVL12:
+  63:modules/algorithm/user_lib.c ****     if (num > Limit)
+ 159              		.loc 1 63 5 is_stmt 1 view .LVU35
+ 160              		.loc 1 63 8 is_stmt 0 view .LVU36
+ 161 0008 F4EEE07A 		vcmpe.f32	s15, s1
+ 162 000c F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 163 0010 08DC     		bgt	.L10
+  64:modules/algorithm/user_lib.c ****     {
+  65:modules/algorithm/user_lib.c ****         num = Limit;
+  66:modules/algorithm/user_lib.c ****     }
+  67:modules/algorithm/user_lib.c ****     else if (num < -Limit)
+ 164              		.loc 1 67 10 is_stmt 1 view .LVU37
+ 165              		.loc 1 67 20 is_stmt 0 view .LVU38
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 5
+
+
+ 166 0012 B1EE600A 		vneg.f32	s0, s1
+ 167              		.loc 1 67 13 view .LVU39
+ 168 0016 B4EEE70A 		vcmpe.f32	s0, s15
+ 169 001a F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 170 001e 01DC     		bgt	.L10
+ 171 0020 B0EE670A 		vmov.f32	s0, s15
+ 172              	.L10:
+ 173              	.LVL13:
+  68:modules/algorithm/user_lib.c ****     {
+  69:modules/algorithm/user_lib.c ****         num = -Limit;
+  70:modules/algorithm/user_lib.c ****     }
+  71:modules/algorithm/user_lib.c ****     return num;
+ 174              		.loc 1 71 5 is_stmt 1 view .LVU40
+  72:modules/algorithm/user_lib.c **** }
+ 175              		.loc 1 72 1 is_stmt 0 view .LVU41
+ 176 0024 7047     		bx	lr
+ 177              		.cfi_endproc
+ 178              	.LFE275:
+ 180              		.section	.text.sign,"ax",%progbits
+ 181              		.align	1
+ 182              		.global	sign
+ 183              		.syntax unified
+ 184              		.thumb
+ 185              		.thumb_func
+ 187              	sign:
+ 188              	.LVL14:
+ 189              	.LFB276:
+  73:modules/algorithm/user_lib.c **** 
+  74:modules/algorithm/user_lib.c **** // 判断符号位
+  75:modules/algorithm/user_lib.c **** float sign(float value)
+  76:modules/algorithm/user_lib.c **** {
+ 190              		.loc 1 76 1 is_stmt 1 view -0
+ 191              		.cfi_startproc
+ 192              		@ args = 0, pretend = 0, frame = 0
+ 193              		@ frame_needed = 0, uses_anonymous_args = 0
+ 194              		@ link register save eliminated.
+  77:modules/algorithm/user_lib.c ****     if (value >= 0.0f)
+ 195              		.loc 1 77 5 view .LVU43
+ 196              		.loc 1 77 8 is_stmt 0 view .LVU44
+ 197 0000 B5EEC00A 		vcmpe.f32	s0, #0
+ 198 0004 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 199 0008 02DB     		blt	.L16
+  78:modules/algorithm/user_lib.c ****     {
+  79:modules/algorithm/user_lib.c ****         return 1.0f;
+ 200              		.loc 1 79 16 view .LVU45
+ 201 000a B7EE000A 		vmov.f32	s0, #1.0e+0
+ 202              	.LVL15:
+ 203              		.loc 1 79 16 view .LVU46
+ 204 000e 7047     		bx	lr
+ 205              	.LVL16:
+ 206              	.L16:
+  80:modules/algorithm/user_lib.c ****     }
+  81:modules/algorithm/user_lib.c ****     else
+  82:modules/algorithm/user_lib.c ****     {
+  83:modules/algorithm/user_lib.c ****         return -1.0f;
+ 207              		.loc 1 83 16 view .LVU47
+ 208 0010 BFEE000A 		vmov.f32	s0, #-1.0e+0
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 6
+
+
+ 209              	.LVL17:
+  84:modules/algorithm/user_lib.c ****     }
+  85:modules/algorithm/user_lib.c **** }
+ 210              		.loc 1 85 1 view .LVU48
+ 211 0014 7047     		bx	lr
+ 212              		.cfi_endproc
+ 213              	.LFE276:
+ 215              		.section	.text.float_deadband,"ax",%progbits
+ 216              		.align	1
+ 217              		.global	float_deadband
+ 218              		.syntax unified
+ 219              		.thumb
+ 220              		.thumb_func
+ 222              	float_deadband:
+ 223              	.LVL18:
+ 224              	.LFB277:
+  86:modules/algorithm/user_lib.c **** 
+  87:modules/algorithm/user_lib.c **** // 浮点死区
+  88:modules/algorithm/user_lib.c **** float float_deadband(float Value, float minValue, float maxValue)
+  89:modules/algorithm/user_lib.c **** {
+ 225              		.loc 1 89 1 is_stmt 1 view -0
+ 226              		.cfi_startproc
+ 227              		@ args = 0, pretend = 0, frame = 0
+ 228              		@ frame_needed = 0, uses_anonymous_args = 0
+ 229              		@ link register save eliminated.
+  90:modules/algorithm/user_lib.c ****     if (Value < maxValue && Value > minValue)
+ 230              		.loc 1 90 5 view .LVU50
+ 231              		.loc 1 90 8 is_stmt 0 view .LVU51
+ 232 0000 B4EEC10A 		vcmpe.f32	s0, s2
+ 233 0004 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 234 0008 06D5     		bpl	.L18
+ 235              		.loc 1 90 26 discriminator 1 view .LVU52
+ 236 000a B4EEE00A 		vcmpe.f32	s0, s1
+ 237 000e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 238 0012 01DD     		ble	.L18
+  91:modules/algorithm/user_lib.c ****     {
+  92:modules/algorithm/user_lib.c ****         Value = 0.0f;
+ 239              		.loc 1 92 15 view .LVU53
+ 240 0014 9FED010A 		vldr.32	s0, .L22
+ 241              	.LVL19:
+ 242              	.L18:
+  93:modules/algorithm/user_lib.c ****     }
+  94:modules/algorithm/user_lib.c ****     return Value;
+ 243              		.loc 1 94 5 is_stmt 1 view .LVU54
+  95:modules/algorithm/user_lib.c **** }
+ 244              		.loc 1 95 1 is_stmt 0 view .LVU55
+ 245 0018 7047     		bx	lr
+ 246              	.L23:
+ 247 001a 00BF     		.align	2
+ 248              	.L22:
+ 249 001c 00000000 		.word	0
+ 250              		.cfi_endproc
+ 251              	.LFE277:
+ 253              		.section	.text.float_constrain,"ax",%progbits
+ 254              		.align	1
+ 255              		.global	float_constrain
+ 256              		.syntax unified
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 7
+
+
+ 257              		.thumb
+ 258              		.thumb_func
+ 260              	float_constrain:
+ 261              	.LVL20:
+ 262              	.LFB278:
+  96:modules/algorithm/user_lib.c **** 
+  97:modules/algorithm/user_lib.c **** // 限幅函数
+  98:modules/algorithm/user_lib.c **** float float_constrain(float Value, float minValue, float maxValue)
+  99:modules/algorithm/user_lib.c **** {
+ 263              		.loc 1 99 1 is_stmt 1 view -0
+ 264              		.cfi_startproc
+ 265              		@ args = 0, pretend = 0, frame = 0
+ 266              		@ frame_needed = 0, uses_anonymous_args = 0
+ 267              		@ link register save eliminated.
+ 100:modules/algorithm/user_lib.c ****     if (Value < minValue)
+ 268              		.loc 1 100 5 view .LVU57
+ 269              		.loc 1 100 8 is_stmt 0 view .LVU58
+ 270 0000 B4EEE00A 		vcmpe.f32	s0, s1
+ 271 0004 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 272 0008 07D4     		bmi	.L27
+ 101:modules/algorithm/user_lib.c ****         return minValue;
+ 102:modules/algorithm/user_lib.c ****     else if (Value > maxValue)
+ 273              		.loc 1 102 10 is_stmt 1 view .LVU59
+ 274              		.loc 1 102 13 is_stmt 0 view .LVU60
+ 275 000a B4EEC10A 		vcmpe.f32	s0, s2
+ 276 000e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 277 0012 04DD     		ble	.L24
+ 103:modules/algorithm/user_lib.c ****         return maxValue;
+ 278              		.loc 1 103 16 view .LVU61
+ 279 0014 B0EE410A 		vmov.f32	s0, s2
+ 280              	.LVL21:
+ 281              		.loc 1 103 16 view .LVU62
+ 282 0018 7047     		bx	lr
+ 283              	.LVL22:
+ 284              	.L27:
+ 101:modules/algorithm/user_lib.c ****         return minValue;
+ 285              		.loc 1 101 16 view .LVU63
+ 286 001a B0EE600A 		vmov.f32	s0, s1
+ 287              	.LVL23:
+ 288              	.L24:
+ 104:modules/algorithm/user_lib.c ****     else
+ 105:modules/algorithm/user_lib.c ****         return Value;
+ 106:modules/algorithm/user_lib.c **** }
+ 289              		.loc 1 106 1 view .LVU64
+ 290 001e 7047     		bx	lr
+ 291              		.cfi_endproc
+ 292              	.LFE278:
+ 294              		.section	.text.int16_constrain,"ax",%progbits
+ 295              		.align	1
+ 296              		.global	int16_constrain
+ 297              		.syntax unified
+ 298              		.thumb
+ 299              		.thumb_func
+ 301              	int16_constrain:
+ 302              	.LVL24:
+ 303              	.LFB279:
+ 107:modules/algorithm/user_lib.c **** 
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 8
+
+
+ 108:modules/algorithm/user_lib.c **** // 限幅函数
+ 109:modules/algorithm/user_lib.c **** int16_t int16_constrain(int16_t Value, int16_t minValue, int16_t maxValue)
+ 110:modules/algorithm/user_lib.c **** {
+ 304              		.loc 1 110 1 is_stmt 1 view -0
+ 305              		.cfi_startproc
+ 306              		@ args = 0, pretend = 0, frame = 0
+ 307              		@ frame_needed = 0, uses_anonymous_args = 0
+ 308              		@ link register save eliminated.
+ 111:modules/algorithm/user_lib.c ****     if (Value < minValue)
+ 309              		.loc 1 111 5 view .LVU66
+ 310              		.loc 1 111 8 is_stmt 0 view .LVU67
+ 311 0000 8842     		cmp	r0, r1
+ 312 0002 03DB     		blt	.L33
+ 112:modules/algorithm/user_lib.c ****         return minValue;
+ 113:modules/algorithm/user_lib.c ****     else if (Value > maxValue)
+ 313              		.loc 1 113 10 is_stmt 1 view .LVU68
+ 314              		.loc 1 113 13 is_stmt 0 view .LVU69
+ 315 0004 9042     		cmp	r0, r2
+ 316 0006 02DD     		ble	.L32
+ 114:modules/algorithm/user_lib.c ****         return maxValue;
+ 317              		.loc 1 114 16 view .LVU70
+ 318 0008 1046     		mov	r0, r2
+ 319              	.LVL25:
+ 320              		.loc 1 114 16 view .LVU71
+ 321 000a 7047     		bx	lr
+ 322              	.LVL26:
+ 323              	.L33:
+ 112:modules/algorithm/user_lib.c ****         return minValue;
+ 324              		.loc 1 112 16 view .LVU72
+ 325 000c 0846     		mov	r0, r1
+ 326              	.LVL27:
+ 327              	.L32:
+ 115:modules/algorithm/user_lib.c ****     else
+ 116:modules/algorithm/user_lib.c ****         return Value;
+ 117:modules/algorithm/user_lib.c **** }
+ 328              		.loc 1 117 1 view .LVU73
+ 329 000e 7047     		bx	lr
+ 330              		.cfi_endproc
+ 331              	.LFE279:
+ 333              		.section	.text.loop_float_constrain,"ax",%progbits
+ 334              		.align	1
+ 335              		.global	loop_float_constrain
+ 336              		.syntax unified
+ 337              		.thumb
+ 338              		.thumb_func
+ 340              	loop_float_constrain:
+ 341              	.LVL28:
+ 342              	.LFB280:
+ 118:modules/algorithm/user_lib.c **** 
+ 119:modules/algorithm/user_lib.c **** // 循环限幅函数
+ 120:modules/algorithm/user_lib.c **** float loop_float_constrain(float Input, float minValue, float maxValue)
+ 121:modules/algorithm/user_lib.c **** {
+ 343              		.loc 1 121 1 is_stmt 1 view -0
+ 344              		.cfi_startproc
+ 345              		@ args = 0, pretend = 0, frame = 0
+ 346              		@ frame_needed = 0, uses_anonymous_args = 0
+ 347              		@ link register save eliminated.
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 9
+
+
+ 122:modules/algorithm/user_lib.c ****     if (maxValue < minValue)
+ 348              		.loc 1 122 5 view .LVU75
+ 349              		.loc 1 122 8 is_stmt 0 view .LVU76
+ 350 0000 B4EEE01A 		vcmpe.f32	s2, s1
+ 351 0004 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 352 0008 1ED4     		bmi	.L36
+ 123:modules/algorithm/user_lib.c ****     {
+ 124:modules/algorithm/user_lib.c ****         return Input;
+ 125:modules/algorithm/user_lib.c ****     }
+ 126:modules/algorithm/user_lib.c **** 
+ 127:modules/algorithm/user_lib.c ****     if (Input > maxValue)
+ 353              		.loc 1 127 5 is_stmt 1 view .LVU77
+ 354              		.loc 1 127 8 is_stmt 0 view .LVU78
+ 355 000a B4EEC01A 		vcmpe.f32	s2, s0
+ 356 000e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 357 0012 0AD5     		bpl	.L46
+ 358              	.LBB2:
+ 128:modules/algorithm/user_lib.c ****     {
+ 129:modules/algorithm/user_lib.c ****         float len = maxValue - minValue;
+ 359              		.loc 1 129 9 is_stmt 1 view .LVU79
+ 360              		.loc 1 129 15 is_stmt 0 view .LVU80
+ 361 0014 71EE600A 		vsub.f32	s1, s2, s1
+ 362              	.LVL29:
+ 130:modules/algorithm/user_lib.c ****         while (Input > maxValue)
+ 363              		.loc 1 130 9 is_stmt 1 view .LVU81
+ 364              		.loc 1 130 15 is_stmt 0 view .LVU82
+ 365 0018 01E0     		b	.L39
+ 366              	.L40:
+ 131:modules/algorithm/user_lib.c ****         {
+ 132:modules/algorithm/user_lib.c ****             Input -= len;
+ 367              		.loc 1 132 13 is_stmt 1 view .LVU83
+ 368              		.loc 1 132 19 is_stmt 0 view .LVU84
+ 369 001a 30EE600A 		vsub.f32	s0, s0, s1
+ 370              	.LVL30:
+ 371              	.L39:
+ 130:modules/algorithm/user_lib.c ****         while (Input > maxValue)
+ 372              		.loc 1 130 22 is_stmt 1 view .LVU85
+ 373 001e B4EEC10A 		vcmpe.f32	s0, s2
+ 374 0022 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 375 0026 F8DC     		bgt	.L40
+ 376 0028 7047     		bx	lr
+ 377              	.LVL31:
+ 378              	.L46:
+ 130:modules/algorithm/user_lib.c ****         while (Input > maxValue)
+ 379              		.loc 1 130 22 is_stmt 0 view .LVU86
+ 380              	.LBE2:
+ 133:modules/algorithm/user_lib.c ****         }
+ 134:modules/algorithm/user_lib.c ****     }
+ 135:modules/algorithm/user_lib.c ****     else if (Input < minValue)
+ 381              		.loc 1 135 10 is_stmt 1 view .LVU87
+ 382              		.loc 1 135 13 is_stmt 0 view .LVU88
+ 383 002a F4EEC00A 		vcmpe.f32	s1, s0
+ 384 002e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 385 0032 09DD     		ble	.L36
+ 386              	.LBB3:
+ 136:modules/algorithm/user_lib.c ****     {
+ 137:modules/algorithm/user_lib.c ****         float len = maxValue - minValue;
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 10
+
+
+ 387              		.loc 1 137 9 is_stmt 1 view .LVU89
+ 388              		.loc 1 137 15 is_stmt 0 view .LVU90
+ 389 0034 31EE601A 		vsub.f32	s2, s2, s1
+ 390              	.LVL32:
+ 138:modules/algorithm/user_lib.c ****         while (Input < minValue)
+ 391              		.loc 1 138 9 is_stmt 1 view .LVU91
+ 392              		.loc 1 138 15 is_stmt 0 view .LVU92
+ 393 0038 01E0     		b	.L42
+ 394              	.L43:
+ 139:modules/algorithm/user_lib.c ****         {
+ 140:modules/algorithm/user_lib.c ****             Input += len;
+ 395              		.loc 1 140 13 is_stmt 1 view .LVU93
+ 396              		.loc 1 140 19 is_stmt 0 view .LVU94
+ 397 003a 30EE010A 		vadd.f32	s0, s0, s2
+ 398              	.LVL33:
+ 399              	.L42:
+ 138:modules/algorithm/user_lib.c ****         while (Input < minValue)
+ 400              		.loc 1 138 22 is_stmt 1 view .LVU95
+ 401 003e B4EEE00A 		vcmpe.f32	s0, s1
+ 402 0042 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 403 0046 F8D4     		bmi	.L43
+ 404              	.LVL34:
+ 405              	.L36:
+ 138:modules/algorithm/user_lib.c ****         while (Input < minValue)
+ 406              		.loc 1 138 22 is_stmt 0 view .LVU96
+ 407              	.LBE3:
+ 141:modules/algorithm/user_lib.c ****         }
+ 142:modules/algorithm/user_lib.c ****     }
+ 143:modules/algorithm/user_lib.c ****     return Input;
+ 144:modules/algorithm/user_lib.c **** }
+ 408              		.loc 1 144 1 view .LVU97
+ 409 0048 7047     		bx	lr
+ 410              		.cfi_endproc
+ 411              	.LFE280:
+ 413              		.section	.text.theta_format,"ax",%progbits
+ 414              		.align	1
+ 415              		.global	theta_format
+ 416              		.syntax unified
+ 417              		.thumb
+ 418              		.thumb_func
+ 420              	theta_format:
+ 421              	.LVL35:
+ 422              	.LFB281:
+ 145:modules/algorithm/user_lib.c **** 
+ 146:modules/algorithm/user_lib.c **** // 弧度格式化为-PI~PI
+ 147:modules/algorithm/user_lib.c **** 
+ 148:modules/algorithm/user_lib.c **** // 角度格式化为-180~180
+ 149:modules/algorithm/user_lib.c **** float theta_format(float Ang)
+ 150:modules/algorithm/user_lib.c **** {
+ 423              		.loc 1 150 1 is_stmt 1 view -0
+ 424              		.cfi_startproc
+ 425              		@ args = 0, pretend = 0, frame = 0
+ 426              		@ frame_needed = 0, uses_anonymous_args = 0
+ 427              		.loc 1 150 1 is_stmt 0 view .LVU99
+ 428 0000 08B5     		push	{r3, lr}
+ 429              	.LCFI1:
+ 430              		.cfi_def_cfa_offset 8
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 11
+
+
+ 431              		.cfi_offset 3, -8
+ 432              		.cfi_offset 14, -4
+ 151:modules/algorithm/user_lib.c ****     return loop_float_constrain(Ang, -180.0f, 180.0f);
+ 433              		.loc 1 151 5 is_stmt 1 view .LVU100
+ 434              		.loc 1 151 12 is_stmt 0 view .LVU101
+ 435 0002 9FED031A 		vldr.32	s2, .L49
+ 436 0006 DFED030A 		vldr.32	s1, .L49+4
+ 437 000a FFF7FEFF 		bl	loop_float_constrain
+ 438              	.LVL36:
+ 152:modules/algorithm/user_lib.c **** }
+ 439              		.loc 1 152 1 view .LVU102
+ 440 000e 08BD     		pop	{r3, pc}
+ 441              	.L50:
+ 442              		.align	2
+ 443              	.L49:
+ 444 0010 00003443 		.word	1127481344
+ 445 0014 000034C3 		.word	-1020002304
+ 446              		.cfi_endproc
+ 447              	.LFE281:
+ 449              		.section	.text.float_rounding,"ax",%progbits
+ 450              		.align	1
+ 451              		.global	float_rounding
+ 452              		.syntax unified
+ 453              		.thumb
+ 454              		.thumb_func
+ 456              	float_rounding:
+ 457              	.LVL37:
+ 458              	.LFB282:
+ 153:modules/algorithm/user_lib.c **** 
+ 154:modules/algorithm/user_lib.c **** int float_rounding(float raw)
+ 155:modules/algorithm/user_lib.c **** {
+ 459              		.loc 1 155 1 is_stmt 1 view -0
+ 460              		.cfi_startproc
+ 461              		@ args = 0, pretend = 0, frame = 0
+ 462              		@ frame_needed = 0, uses_anonymous_args = 0
+ 463              		@ link register save eliminated.
+ 156:modules/algorithm/user_lib.c ****     static int integer;
+ 464              		.loc 1 156 5 view .LVU104
+ 157:modules/algorithm/user_lib.c ****     static float decimal;
+ 465              		.loc 1 157 5 view .LVU105
+ 158:modules/algorithm/user_lib.c ****     integer = (int)raw;
+ 466              		.loc 1 158 5 view .LVU106
+ 467              		.loc 1 158 15 is_stmt 0 view .LVU107
+ 468 0000 FDEEC07A 		vcvt.s32.f32	s15, s0
+ 469              		.loc 1 158 13 view .LVU108
+ 470 0004 0C4B     		ldr	r3, .L55
+ 471 0006 C3ED007A 		vstr.32	s15, [r3]	@ int
+ 159:modules/algorithm/user_lib.c ****     decimal = raw - integer;
+ 472              		.loc 1 159 5 is_stmt 1 view .LVU109
+ 473              		.loc 1 159 19 is_stmt 0 view .LVU110
+ 474 000a B8EEE77A 		vcvt.f32.s32	s14, s15
+ 475 000e 30EE470A 		vsub.f32	s0, s0, s14
+ 476              	.LVL38:
+ 477              		.loc 1 159 13 view .LVU111
+ 478 0012 0A4B     		ldr	r3, .L55+4
+ 479 0014 83ED000A 		vstr.32	s0, [r3]
+ 160:modules/algorithm/user_lib.c ****     if (decimal > 0.5f)
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 12
+
+
+ 480              		.loc 1 160 5 is_stmt 1 view .LVU112
+ 481              		.loc 1 160 8 is_stmt 0 view .LVU113
+ 482 0018 B6EE007A 		vmov.f32	s14, #5.0e-1
+ 483 001c B4EEC70A 		vcmpe.f32	s0, s14
+ 484 0020 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 485 0024 04DD     		ble	.L52
+ 161:modules/algorithm/user_lib.c ****         integer++;
+ 486              		.loc 1 161 9 is_stmt 1 view .LVU114
+ 487              		.loc 1 161 16 is_stmt 0 view .LVU115
+ 488 0026 17EE903A 		vmov	r3, s15	@ int
+ 489 002a 0133     		adds	r3, r3, #1
+ 490 002c 024A     		ldr	r2, .L55
+ 491 002e 1360     		str	r3, [r2]
+ 492              	.L52:
+ 162:modules/algorithm/user_lib.c ****     return integer;
+ 493              		.loc 1 162 5 is_stmt 1 view .LVU116
+ 163:modules/algorithm/user_lib.c **** }
+ 494              		.loc 1 163 1 is_stmt 0 view .LVU117
+ 495 0030 014B     		ldr	r3, .L55
+ 496 0032 1868     		ldr	r0, [r3]
+ 497 0034 7047     		bx	lr
+ 498              	.L56:
+ 499 0036 00BF     		.align	2
+ 500              	.L55:
+ 501 0038 00000000 		.word	integer.1
+ 502 003c 00000000 		.word	decimal.0
+ 503              		.cfi_endproc
+ 504              	.LFE282:
+ 506              		.section	.text.Norm3d,"ax",%progbits
+ 507              		.align	1
+ 508              		.global	Norm3d
+ 509              		.syntax unified
+ 510              		.thumb
+ 511              		.thumb_func
+ 513              	Norm3d:
+ 514              	.LVL39:
+ 515              	.LFB283:
+ 164:modules/algorithm/user_lib.c **** 
+ 165:modules/algorithm/user_lib.c **** // 三维向量归一化
+ 166:modules/algorithm/user_lib.c **** float *Norm3d(float *v)
+ 167:modules/algorithm/user_lib.c **** {
+ 516              		.loc 1 167 1 is_stmt 1 view -0
+ 517              		.cfi_startproc
+ 518              		@ args = 0, pretend = 0, frame = 0
+ 519              		@ frame_needed = 0, uses_anonymous_args = 0
+ 520              		.loc 1 167 1 is_stmt 0 view .LVU119
+ 521 0000 10B5     		push	{r4, lr}
+ 522              	.LCFI2:
+ 523              		.cfi_def_cfa_offset 8
+ 524              		.cfi_offset 4, -8
+ 525              		.cfi_offset 14, -4
+ 526 0002 2DED048B 		vpush.64	{d8, d9}
+ 527              	.LCFI3:
+ 528              		.cfi_def_cfa_offset 24
+ 529              		.cfi_offset 80, -24
+ 530              		.cfi_offset 81, -20
+ 531              		.cfi_offset 82, -16
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 13
+
+
+ 532              		.cfi_offset 83, -12
+ 533 0006 0446     		mov	r4, r0
+ 168:modules/algorithm/user_lib.c ****     float len = Sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+ 534              		.loc 1 168 5 is_stmt 1 view .LVU120
+ 535              		.loc 1 168 23 is_stmt 0 view .LVU121
+ 536 0008 90ED009A 		vldr.32	s18, [r0]
+ 537              		.loc 1 168 27 view .LVU122
+ 538 000c 69EE097A 		vmul.f32	s15, s18, s18
+ 539              		.loc 1 168 37 view .LVU123
+ 540 0010 D0ED018A 		vldr.32	s17, [r0, #4]
+ 541              		.loc 1 168 41 view .LVU124
+ 542 0014 28EEA87A 		vmul.f32	s14, s17, s17
+ 543              		.loc 1 168 34 view .LVU125
+ 544 0018 77EE877A 		vadd.f32	s15, s15, s14
+ 545              		.loc 1 168 51 view .LVU126
+ 546 001c 90ED028A 		vldr.32	s16, [r0, #8]
+ 547              		.loc 1 168 55 view .LVU127
+ 548 0020 28EE080A 		vmul.f32	s0, s16, s16
+ 549              		.loc 1 168 17 view .LVU128
+ 550 0024 37EE800A 		vadd.f32	s0, s15, s0
+ 551 0028 FFF7FEFF 		bl	Sqrt
+ 552              	.LVL40:
+ 169:modules/algorithm/user_lib.c ****     v[0] /= len;
+ 553              		.loc 1 169 5 is_stmt 1 view .LVU129
+ 554              		.loc 1 169 10 is_stmt 0 view .LVU130
+ 555 002c C9EE007A 		vdiv.f32	s15, s18, s0
+ 556 0030 C4ED007A 		vstr.32	s15, [r4]
+ 170:modules/algorithm/user_lib.c ****     v[1] /= len;
+ 557              		.loc 1 170 5 is_stmt 1 view .LVU131
+ 558              		.loc 1 170 10 is_stmt 0 view .LVU132
+ 559 0034 C8EE807A 		vdiv.f32	s15, s17, s0
+ 560 0038 C4ED017A 		vstr.32	s15, [r4, #4]
+ 171:modules/algorithm/user_lib.c ****     v[2] /= len;
+ 561              		.loc 1 171 5 is_stmt 1 view .LVU133
+ 562              		.loc 1 171 10 is_stmt 0 view .LVU134
+ 563 003c C8EE007A 		vdiv.f32	s15, s16, s0
+ 564 0040 C4ED027A 		vstr.32	s15, [r4, #8]
+ 172:modules/algorithm/user_lib.c ****     return v;
+ 565              		.loc 1 172 5 is_stmt 1 view .LVU135
+ 173:modules/algorithm/user_lib.c **** }
+ 566              		.loc 1 173 1 is_stmt 0 view .LVU136
+ 567 0044 2046     		mov	r0, r4
+ 568 0046 BDEC048B 		vldm	sp!, {d8-d9}
+ 569              	.LCFI4:
+ 570              		.cfi_restore 82
+ 571              		.cfi_restore 83
+ 572              		.cfi_restore 80
+ 573              		.cfi_restore 81
+ 574              		.cfi_def_cfa_offset 8
+ 575 004a 10BD     		pop	{r4, pc}
+ 576              		.loc 1 173 1 view .LVU137
+ 577              		.cfi_endproc
+ 578              	.LFE283:
+ 580              		.section	.text.NormOf3d,"ax",%progbits
+ 581              		.align	1
+ 582              		.global	NormOf3d
+ 583              		.syntax unified
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 14
+
+
+ 584              		.thumb
+ 585              		.thumb_func
+ 587              	NormOf3d:
+ 588              	.LVL41:
+ 589              	.LFB284:
+ 174:modules/algorithm/user_lib.c **** 
+ 175:modules/algorithm/user_lib.c **** // 计算模长
+ 176:modules/algorithm/user_lib.c **** float NormOf3d(float *v)
+ 177:modules/algorithm/user_lib.c **** {
+ 590              		.loc 1 177 1 is_stmt 1 view -0
+ 591              		.cfi_startproc
+ 592              		@ args = 0, pretend = 0, frame = 0
+ 593              		@ frame_needed = 0, uses_anonymous_args = 0
+ 594              		.loc 1 177 1 is_stmt 0 view .LVU139
+ 595 0000 08B5     		push	{r3, lr}
+ 596              	.LCFI5:
+ 597              		.cfi_def_cfa_offset 8
+ 598              		.cfi_offset 3, -8
+ 599              		.cfi_offset 14, -4
+ 178:modules/algorithm/user_lib.c ****     return Sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+ 600              		.loc 1 178 5 is_stmt 1 view .LVU140
+ 601              		.loc 1 178 18 is_stmt 0 view .LVU141
+ 602 0002 90ED000A 		vldr.32	s0, [r0]
+ 603              		.loc 1 178 22 view .LVU142
+ 604 0006 20EE000A 		vmul.f32	s0, s0, s0
+ 605              		.loc 1 178 32 view .LVU143
+ 606 000a D0ED017A 		vldr.32	s15, [r0, #4]
+ 607              		.loc 1 178 36 view .LVU144
+ 608 000e 67EEA77A 		vmul.f32	s15, s15, s15
+ 609              		.loc 1 178 29 view .LVU145
+ 610 0012 70EE277A 		vadd.f32	s15, s0, s15
+ 611              		.loc 1 178 46 view .LVU146
+ 612 0016 90ED020A 		vldr.32	s0, [r0, #8]
+ 613              		.loc 1 178 50 view .LVU147
+ 614 001a 20EE000A 		vmul.f32	s0, s0, s0
+ 615              		.loc 1 178 12 view .LVU148
+ 616 001e 37EE800A 		vadd.f32	s0, s15, s0
+ 617 0022 FFF7FEFF 		bl	Sqrt
+ 618              	.LVL42:
+ 179:modules/algorithm/user_lib.c **** }
+ 619              		.loc 1 179 1 view .LVU149
+ 620 0026 08BD     		pop	{r3, pc}
+ 621              		.cfi_endproc
+ 622              	.LFE284:
+ 624              		.section	.text.Cross3d,"ax",%progbits
+ 625              		.align	1
+ 626              		.global	Cross3d
+ 627              		.syntax unified
+ 628              		.thumb
+ 629              		.thumb_func
+ 631              	Cross3d:
+ 632              	.LVL43:
+ 633              	.LFB285:
+ 180:modules/algorithm/user_lib.c **** 
+ 181:modules/algorithm/user_lib.c **** // 三维向量叉乘v1 x v2
+ 182:modules/algorithm/user_lib.c **** void Cross3d(float *v1, float *v2, float *res)
+ 183:modules/algorithm/user_lib.c **** {
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 15
+
+
+ 634              		.loc 1 183 1 is_stmt 1 view -0
+ 635              		.cfi_startproc
+ 636              		@ args = 0, pretend = 0, frame = 0
+ 637              		@ frame_needed = 0, uses_anonymous_args = 0
+ 638              		@ link register save eliminated.
+ 184:modules/algorithm/user_lib.c ****     res[0] = v1[1] * v2[2] - v1[2] * v2[1];
+ 639              		.loc 1 184 5 view .LVU151
+ 640              		.loc 1 184 16 is_stmt 0 view .LVU152
+ 641 0000 D0ED017A 		vldr.32	s15, [r0, #4]
+ 642              		.loc 1 184 24 view .LVU153
+ 643 0004 91ED027A 		vldr.32	s14, [r1, #8]
+ 644              		.loc 1 184 20 view .LVU154
+ 645 0008 67EE877A 		vmul.f32	s15, s15, s14
+ 646              		.loc 1 184 32 view .LVU155
+ 647 000c 90ED027A 		vldr.32	s14, [r0, #8]
+ 648              		.loc 1 184 40 view .LVU156
+ 649 0010 D1ED016A 		vldr.32	s13, [r1, #4]
+ 650              		.loc 1 184 36 view .LVU157
+ 651 0014 27EE267A 		vmul.f32	s14, s14, s13
+ 652              		.loc 1 184 28 view .LVU158
+ 653 0018 77EEC77A 		vsub.f32	s15, s15, s14
+ 654              		.loc 1 184 12 view .LVU159
+ 655 001c C2ED007A 		vstr.32	s15, [r2]
+ 185:modules/algorithm/user_lib.c ****     res[1] = v1[2] * v2[0] - v1[0] * v2[2];
+ 656              		.loc 1 185 5 is_stmt 1 view .LVU160
+ 657              		.loc 1 185 16 is_stmt 0 view .LVU161
+ 658 0020 D0ED027A 		vldr.32	s15, [r0, #8]
+ 659              		.loc 1 185 24 view .LVU162
+ 660 0024 91ED007A 		vldr.32	s14, [r1]
+ 661              		.loc 1 185 20 view .LVU163
+ 662 0028 67EE877A 		vmul.f32	s15, s15, s14
+ 663              		.loc 1 185 32 view .LVU164
+ 664 002c 90ED007A 		vldr.32	s14, [r0]
+ 665              		.loc 1 185 40 view .LVU165
+ 666 0030 D1ED026A 		vldr.32	s13, [r1, #8]
+ 667              		.loc 1 185 36 view .LVU166
+ 668 0034 27EE267A 		vmul.f32	s14, s14, s13
+ 669              		.loc 1 185 28 view .LVU167
+ 670 0038 77EEC77A 		vsub.f32	s15, s15, s14
+ 671              		.loc 1 185 12 view .LVU168
+ 672 003c C2ED017A 		vstr.32	s15, [r2, #4]
+ 186:modules/algorithm/user_lib.c ****     res[2] = v1[0] * v2[1] - v1[1] * v2[0];
+ 673              		.loc 1 186 5 is_stmt 1 view .LVU169
+ 674              		.loc 1 186 16 is_stmt 0 view .LVU170
+ 675 0040 D0ED007A 		vldr.32	s15, [r0]
+ 676              		.loc 1 186 24 view .LVU171
+ 677 0044 91ED017A 		vldr.32	s14, [r1, #4]
+ 678              		.loc 1 186 20 view .LVU172
+ 679 0048 67EE877A 		vmul.f32	s15, s15, s14
+ 680              		.loc 1 186 32 view .LVU173
+ 681 004c 90ED017A 		vldr.32	s14, [r0, #4]
+ 682              		.loc 1 186 40 view .LVU174
+ 683 0050 D1ED006A 		vldr.32	s13, [r1]
+ 684              		.loc 1 186 36 view .LVU175
+ 685 0054 27EE267A 		vmul.f32	s14, s14, s13
+ 686              		.loc 1 186 28 view .LVU176
+ 687 0058 77EEC77A 		vsub.f32	s15, s15, s14
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 16
+
+
+ 688              		.loc 1 186 12 view .LVU177
+ 689 005c C2ED027A 		vstr.32	s15, [r2, #8]
+ 187:modules/algorithm/user_lib.c **** }
+ 690              		.loc 1 187 1 view .LVU178
+ 691 0060 7047     		bx	lr
+ 692              		.cfi_endproc
+ 693              	.LFE285:
+ 695              		.section	.text.Dot3d,"ax",%progbits
+ 696              		.align	1
+ 697              		.global	Dot3d
+ 698              		.syntax unified
+ 699              		.thumb
+ 700              		.thumb_func
+ 702              	Dot3d:
+ 703              	.LVL44:
+ 704              	.LFB286:
+ 188:modules/algorithm/user_lib.c **** 
+ 189:modules/algorithm/user_lib.c **** // 三维向量点乘
+ 190:modules/algorithm/user_lib.c **** float Dot3d(float *v1, float *v2)
+ 191:modules/algorithm/user_lib.c **** {
+ 705              		.loc 1 191 1 is_stmt 1 view -0
+ 706              		.cfi_startproc
+ 707              		@ args = 0, pretend = 0, frame = 0
+ 708              		@ frame_needed = 0, uses_anonymous_args = 0
+ 709              		@ link register save eliminated.
+ 192:modules/algorithm/user_lib.c ****     return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+ 710              		.loc 1 192 5 view .LVU180
+ 711              		.loc 1 192 14 is_stmt 0 view .LVU181
+ 712 0000 D0ED007A 		vldr.32	s15, [r0]
+ 713              		.loc 1 192 22 view .LVU182
+ 714 0004 91ED007A 		vldr.32	s14, [r1]
+ 715              		.loc 1 192 18 view .LVU183
+ 716 0008 67EE877A 		vmul.f32	s15, s15, s14
+ 717              		.loc 1 192 30 view .LVU184
+ 718 000c 90ED017A 		vldr.32	s14, [r0, #4]
+ 719              		.loc 1 192 38 view .LVU185
+ 720 0010 D1ED016A 		vldr.32	s13, [r1, #4]
+ 721              		.loc 1 192 34 view .LVU186
+ 722 0014 27EE267A 		vmul.f32	s14, s14, s13
+ 723              		.loc 1 192 26 view .LVU187
+ 724 0018 77EE877A 		vadd.f32	s15, s15, s14
+ 725              		.loc 1 192 46 view .LVU188
+ 726 001c 90ED020A 		vldr.32	s0, [r0, #8]
+ 727              		.loc 1 192 54 view .LVU189
+ 728 0020 91ED027A 		vldr.32	s14, [r1, #8]
+ 729              		.loc 1 192 50 view .LVU190
+ 730 0024 20EE070A 		vmul.f32	s0, s0, s14
+ 193:modules/algorithm/user_lib.c **** }
+ 731              		.loc 1 193 1 view .LVU191
+ 732 0028 37EE800A 		vadd.f32	s0, s15, s0
+ 733 002c 7047     		bx	lr
+ 734              		.cfi_endproc
+ 735              	.LFE286:
+ 737              		.section	.text.AverageFilter,"ax",%progbits
+ 738              		.align	1
+ 739              		.global	AverageFilter
+ 740              		.syntax unified
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 17
+
+
+ 741              		.thumb
+ 742              		.thumb_func
+ 744              	AverageFilter:
+ 745              	.LVL45:
+ 746              	.LFB287:
+ 194:modules/algorithm/user_lib.c **** 
+ 195:modules/algorithm/user_lib.c **** // 均值滤波,删除buffer中的最后一个元素,填入新的元素并求平均值
+ 196:modules/algorithm/user_lib.c **** float AverageFilter(float new_data, float *buf, uint8_t len)
+ 197:modules/algorithm/user_lib.c **** {
+ 747              		.loc 1 197 1 is_stmt 1 view -0
+ 748              		.cfi_startproc
+ 749              		@ args = 0, pretend = 0, frame = 0
+ 750              		@ frame_needed = 0, uses_anonymous_args = 0
+ 751              		@ link register save eliminated.
+ 198:modules/algorithm/user_lib.c ****     float sum = 0;
+ 752              		.loc 1 198 5 view .LVU193
+ 199:modules/algorithm/user_lib.c ****     for (uint8_t i = 0; i < len - 1; i++)
+ 753              		.loc 1 199 5 view .LVU194
+ 754              	.LBB4:
+ 755              		.loc 1 199 10 view .LVU195
+ 756              		.loc 1 199 18 is_stmt 0 view .LVU196
+ 757 0000 0023     		movs	r3, #0
+ 758              	.LBE4:
+ 198:modules/algorithm/user_lib.c ****     float sum = 0;
+ 759              		.loc 1 198 11 view .LVU197
+ 760 0002 9FED117A 		vldr.32	s14, .L66
+ 761              	.LBB5:
+ 762              		.loc 1 199 5 view .LVU198
+ 763 0006 0BE0     		b	.L64
+ 764              	.LVL46:
+ 765              	.L65:
+ 200:modules/algorithm/user_lib.c ****     {
+ 201:modules/algorithm/user_lib.c ****         buf[i] = buf[i + 1];
+ 766              		.loc 1 201 9 is_stmt 1 view .LVU199
+ 767              		.loc 1 201 12 is_stmt 0 view .LVU200
+ 768 0008 00EB8302 		add	r2, r0, r3, lsl #2
+ 769              		.loc 1 201 21 view .LVU201
+ 770 000c 0133     		adds	r3, r3, #1
+ 771              	.LVL47:
+ 772              		.loc 1 201 21 view .LVU202
+ 773 000e 00EB830C 		add	ip, r0, r3, lsl #2
+ 774 0012 DCED007A 		vldr.32	s15, [ip]
+ 775              		.loc 1 201 16 view .LVU203
+ 776 0016 C2ED007A 		vstr.32	s15, [r2]
+ 202:modules/algorithm/user_lib.c ****         sum += buf[i];
+ 777              		.loc 1 202 9 is_stmt 1 view .LVU204
+ 778              		.loc 1 202 13 is_stmt 0 view .LVU205
+ 779 001a 37EE277A 		vadd.f32	s14, s14, s15
+ 780              	.LVL48:
+ 199:modules/algorithm/user_lib.c ****     for (uint8_t i = 0; i < len - 1; i++)
+ 781              		.loc 1 199 39 is_stmt 1 discriminator 3 view .LVU206
+ 782 001e DBB2     		uxtb	r3, r3
+ 783              	.LVL49:
+ 784              	.L64:
+ 199:modules/algorithm/user_lib.c ****     for (uint8_t i = 0; i < len - 1; i++)
+ 785              		.loc 1 199 27 discriminator 1 view .LVU207
+ 199:modules/algorithm/user_lib.c ****     for (uint8_t i = 0; i < len - 1; i++)
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 18
+
+
+ 786              		.loc 1 199 33 is_stmt 0 discriminator 1 view .LVU208
+ 787 0020 4A1E     		subs	r2, r1, #1
+ 199:modules/algorithm/user_lib.c ****     for (uint8_t i = 0; i < len - 1; i++)
+ 788              		.loc 1 199 27 discriminator 1 view .LVU209
+ 789 0022 9342     		cmp	r3, r2
+ 790 0024 F0DB     		blt	.L65
+ 791              	.LBE5:
+ 203:modules/algorithm/user_lib.c ****     }
+ 204:modules/algorithm/user_lib.c ****     buf[len - 1] = new_data;
+ 792              		.loc 1 204 5 is_stmt 1 view .LVU210
+ 793              		.loc 1 204 8 is_stmt 0 view .LVU211
+ 794 0026 01F18043 		add	r3, r1, #1073741824
+ 795              	.LVL50:
+ 796              		.loc 1 204 8 view .LVU212
+ 797 002a 013B     		subs	r3, r3, #1
+ 798 002c 00EB8300 		add	r0, r0, r3, lsl #2
+ 799              	.LVL51:
+ 800              		.loc 1 204 18 view .LVU213
+ 801 0030 80ED000A 		vstr.32	s0, [r0]
+ 205:modules/algorithm/user_lib.c ****     sum += new_data;
+ 802              		.loc 1 205 5 is_stmt 1 view .LVU214
+ 803              		.loc 1 205 9 is_stmt 0 view .LVU215
+ 804 0034 37EE007A 		vadd.f32	s14, s14, s0
+ 805              	.LVL52:
+ 206:modules/algorithm/user_lib.c ****     return sum / len;
+ 806              		.loc 1 206 5 is_stmt 1 view .LVU216
+ 807              		.loc 1 206 16 is_stmt 0 view .LVU217
+ 808 0038 07EE901A 		vmov	s15, r1	@ int
+ 809 003c B8EEE70A 		vcvt.f32.s32	s0, s15
+ 810              	.LVL53:
+ 207:modules/algorithm/user_lib.c **** }
+ 811              		.loc 1 207 1 view .LVU218
+ 812 0040 87EE000A 		vdiv.f32	s0, s14, s0
+ 813 0044 7047     		bx	lr
+ 814              	.L67:
+ 815 0046 00BF     		.align	2
+ 816              	.L66:
+ 817 0048 00000000 		.word	0
+ 818              		.cfi_endproc
+ 819              	.LFE287:
+ 821              		.section	.text.MatInit,"ax",%progbits
+ 822              		.align	1
+ 823              		.global	MatInit
+ 824              		.syntax unified
+ 825              		.thumb
+ 826              		.thumb_func
+ 828              	MatInit:
+ 829              	.LVL54:
+ 830              	.LFB288:
+ 208:modules/algorithm/user_lib.c **** 
+ 209:modules/algorithm/user_lib.c **** void MatInit(mat *m, uint8_t row, uint8_t col)
+ 210:modules/algorithm/user_lib.c **** {
+ 831              		.loc 1 210 1 is_stmt 1 view -0
+ 832              		.cfi_startproc
+ 833              		@ args = 0, pretend = 0, frame = 0
+ 834              		@ frame_needed = 0, uses_anonymous_args = 0
+ 835              		.loc 1 210 1 is_stmt 0 view .LVU220
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 19
+
+
+ 836 0000 10B5     		push	{r4, lr}
+ 837              	.LCFI6:
+ 838              		.cfi_def_cfa_offset 8
+ 839              		.cfi_offset 4, -8
+ 840              		.cfi_offset 14, -4
+ 841 0002 0446     		mov	r4, r0
+ 211:modules/algorithm/user_lib.c ****     m->numCols = col;
+ 842              		.loc 1 211 5 is_stmt 1 view .LVU221
+ 843              		.loc 1 211 16 is_stmt 0 view .LVU222
+ 844 0004 4280     		strh	r2, [r0, #2]	@ movhi
+ 212:modules/algorithm/user_lib.c ****     m->numRows = row;
+ 845              		.loc 1 212 5 is_stmt 1 view .LVU223
+ 846              		.loc 1 212 16 is_stmt 0 view .LVU224
+ 847 0006 0180     		strh	r1, [r0]	@ movhi
+ 213:modules/algorithm/user_lib.c ****     m->pData = (float *)zmalloc(row * col * sizeof(float));
+ 848              		.loc 1 213 5 is_stmt 1 view .LVU225
+ 849              		.loc 1 213 37 is_stmt 0 view .LVU226
+ 850 0008 02FB01F1 		mul	r1, r2, r1
+ 851              	.LVL55:
+ 852              		.loc 1 213 25 view .LVU227
+ 853 000c 8800     		lsls	r0, r1, #2
+ 854              	.LVL56:
+ 855              		.loc 1 213 25 view .LVU228
+ 856 000e FFF7FEFF 		bl	zmalloc
+ 857              	.LVL57:
+ 858              		.loc 1 213 14 discriminator 1 view .LVU229
+ 859 0012 6060     		str	r0, [r4, #4]
+ 214:modules/algorithm/user_lib.c **** }
+ 860              		.loc 1 214 1 view .LVU230
+ 861 0014 10BD     		pop	{r4, pc}
+ 862              		.loc 1 214 1 view .LVU231
+ 863              		.cfi_endproc
+ 864              	.LFE288:
+ 866              		.section	.bss.decimal.0,"aw",%nobits
+ 867              		.align	2
+ 870              	decimal.0:
+ 871 0000 00000000 		.space	4
+ 872              		.section	.bss.integer.1,"aw",%nobits
+ 873              		.align	2
+ 876              	integer.1:
+ 877 0000 00000000 		.space	4
+ 878              		.text
+ 879              	.Letext0:
+ 880              		.file 2 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.2.
+ 881              		.file 3 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 882              		.file 4 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 883              		.file 5 "Middlewares/ST/ARM/DSP/Include/arm_math_types.h"
+ 884              		.file 6 "Middlewares/ST/ARM/DSP/Include/dsp/matrix_functions.h"
+ 885              		.file 7 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/strin
+ 886              		.file 8 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/stdli
+ 887              		.file 9 "modules/algorithm/user_lib.h"
+ 888              		.file 10 "<built-in>"
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s 			page 20
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 user_lib.c
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:21     .text.zmalloc:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:27     .text.zmalloc:00000000 zmalloc
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:64     .text.Sqrt:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:70     .text.Sqrt:00000000 Sqrt
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:135    .text.Sqrt:00000054 $d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:141    .text.abs_limit:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:147    .text.abs_limit:00000000 abs_limit
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:181    .text.sign:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:187    .text.sign:00000000 sign
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:216    .text.float_deadband:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:222    .text.float_deadband:00000000 float_deadband
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:249    .text.float_deadband:0000001c $d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:254    .text.float_constrain:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:260    .text.float_constrain:00000000 float_constrain
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:295    .text.int16_constrain:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:301    .text.int16_constrain:00000000 int16_constrain
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:334    .text.loop_float_constrain:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:340    .text.loop_float_constrain:00000000 loop_float_constrain
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:414    .text.theta_format:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:420    .text.theta_format:00000000 theta_format
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:444    .text.theta_format:00000010 $d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:450    .text.float_rounding:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:456    .text.float_rounding:00000000 float_rounding
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:501    .text.float_rounding:00000038 $d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:876    .bss.integer.1:00000000 integer.1
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:870    .bss.decimal.0:00000000 decimal.0
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:507    .text.Norm3d:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:513    .text.Norm3d:00000000 Norm3d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:581    .text.NormOf3d:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:587    .text.NormOf3d:00000000 NormOf3d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:625    .text.Cross3d:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:631    .text.Cross3d:00000000 Cross3d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:696    .text.Dot3d:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:702    .text.Dot3d:00000000 Dot3d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:738    .text.AverageFilter:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:744    .text.AverageFilter:00000000 AverageFilter
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:817    .text.AverageFilter:00000048 $d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:822    .text.MatInit:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:828    .text.MatInit:00000000 MatInit
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:867    .bss.decimal.0:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccbkB3Fr.s:873    .bss.integer.1:00000000 $d
+
+UNDEFINED SYMBOLS
+malloc
+memset

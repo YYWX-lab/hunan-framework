@@ -1,0 +1,2736 @@
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 1
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"referee_task.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.file 1 "modules/referee/referee_task.c"
+  20              		.section	.text.DeterminRobotID,"ax",%progbits
+  21              		.align	1
+  22              		.syntax unified
+  23              		.thumb
+  24              		.thumb_func
+  26              	DeterminRobotID:
+  27              	.LFB276:
+   1:modules/referee/referee_task.c **** /**
+   2:modules/referee/referee_task.c ****  * @file referee.C
+   3:modules/referee/referee_task.c ****  * @author kidneygood (you@domain.com)
+   4:modules/referee/referee_task.c ****  * @brief
+   5:modules/referee/referee_task.c ****  * @version 0.1
+   6:modules/referee/referee_task.c ****  * @date 2022-11-18
+   7:modules/referee/referee_task.c ****  *
+   8:modules/referee/referee_task.c ****  * @copyright Copyright (c) 2022
+   9:modules/referee/referee_task.c ****  *
+  10:modules/referee/referee_task.c ****  */
+  11:modules/referee/referee_task.c **** #include "referee_task.h"
+  12:modules/referee/referee_task.c **** #include "robot_def.h"
+  13:modules/referee/referee_task.c **** #include "rm_referee.h"
+  14:modules/referee/referee_task.c **** #include "referee_UI.h"
+  15:modules/referee/referee_task.c **** #include "string.h"
+  16:modules/referee/referee_task.c **** #include "cmsis_os.h"
+  17:modules/referee/referee_task.c **** 
+  18:modules/referee/referee_task.c **** static Referee_Interactive_info_t *Interactive_data; // UI绘制需要的机器人状态数据
+  19:modules/referee/referee_task.c **** static referee_info_t *referee_recv_info;            // 接收到的裁判系统数据
+  20:modules/referee/referee_task.c **** uint8_t UI_Seq;                                      // 包序号，供整个referee文件使用
+  21:modules/referee/referee_task.c **** // @todo 不应该使用全局变量
+  22:modules/referee/referee_task.c **** 
+  23:modules/referee/referee_task.c **** /**
+  24:modules/referee/referee_task.c ****  * @brief  判断各种ID，选择客户端ID
+  25:modules/referee/referee_task.c ****  * @param  referee_info_t *referee_recv_info
+  26:modules/referee/referee_task.c ****  * @retval none
+  27:modules/referee/referee_task.c ****  * @attention
+  28:modules/referee/referee_task.c ****  */
+  29:modules/referee/referee_task.c **** static void DeterminRobotID()
+  30:modules/referee/referee_task.c **** {
+  28              		.loc 1 30 1 view -0
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 2
+
+
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  31:modules/referee/referee_task.c ****     // id小于7是红色,大于7是蓝色,0为红色，1为蓝色   #define Robot_Red 0    #define
+  32:modules/referee/referee_task.c ****     referee_recv_info->referee_id.Robot_Color = referee_recv_info->GameRobotState.robot_id > 7 ? Ro
+  33              		.loc 1 32 5 view .LVU1
+  34              		.loc 1 32 66 is_stmt 0 view .LVU2
+  35 0000 094B     		ldr	r3, .L2
+  36 0002 1B68     		ldr	r3, [r3]
+  37              		.loc 1 32 82 view .LVU3
+  38 0004 93F84220 		ldrb	r2, [r3, #66]	@ zero_extendqisi2
+  39              		.loc 1 32 109 view .LVU4
+  40 0008 072A     		cmp	r2, #7
+  41 000a 94BF     		ite	ls
+  42 000c 0021     		movls	r1, #0
+  43 000e 0121     		movhi	r1, #1
+  44              		.loc 1 32 47 view .LVU5
+  45 0010 1970     		strb	r1, [r3]
+  33:modules/referee/referee_task.c ****     referee_recv_info->referee_id.Robot_ID = referee_recv_info->GameRobotState.robot_id;
+  46              		.loc 1 33 5 is_stmt 1 view .LVU6
+  47              		.loc 1 33 44 is_stmt 0 view .LVU7
+  48 0012 A3F80120 		strh	r2, [r3, #1]	@ unaligned
+  34:modules/referee/referee_task.c ****     referee_recv_info->referee_id.Cilent_ID = 0x0100 + referee_recv_info->referee_id.Robot_ID; // �
+  49              		.loc 1 34 5 is_stmt 1 view .LVU8
+  50              		.loc 1 34 54 is_stmt 0 view .LVU9
+  51 0016 02F58072 		add	r2, r2, #256
+  52              		.loc 1 34 45 view .LVU10
+  53 001a A3F80320 		strh	r2, [r3, #3]	@ unaligned
+  35:modules/referee/referee_task.c ****     referee_recv_info->referee_id.Receiver_Robot_ID = 0;
+  54              		.loc 1 35 5 is_stmt 1 view .LVU11
+  55              		.loc 1 35 53 is_stmt 0 view .LVU12
+  56 001e 0022     		movs	r2, #0
+  57 0020 5A71     		strb	r2, [r3, #5]
+  58 0022 9A71     		strb	r2, [r3, #6]
+  36:modules/referee/referee_task.c **** }
+  59              		.loc 1 36 1 view .LVU13
+  60 0024 7047     		bx	lr
+  61              	.L3:
+  62 0026 00BF     		.align	2
+  63              	.L2:
+  64 0028 00000000 		.word	referee_recv_info
+  65              		.cfi_endproc
+  66              	.LFE276:
+  68              		.section	.text.RobotModeTest,"ax",%progbits
+  69              		.align	1
+  70              		.syntax unified
+  71              		.thumb
+  72              		.thumb_func
+  74              	RobotModeTest:
+  75              	.LVL0:
+  76              	.LFB280:
+  37:modules/referee/referee_task.c **** 
+  38:modules/referee/referee_task.c **** static void MyUIRefresh(referee_info_t *referee_recv_info, Referee_Interactive_info_t *_Interactive
+  39:modules/referee/referee_task.c **** static void UIChangeCheck(Referee_Interactive_info_t *_Interactive_data); // 模式切换检测
+  40:modules/referee/referee_task.c **** static void RobotModeTest(Referee_Interactive_info_t *_Interactive_data); // 测试用函数，实�
+  41:modules/referee/referee_task.c **** 
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 3
+
+
+  42:modules/referee/referee_task.c **** referee_info_t *UITaskInit(UART_HandleTypeDef *referee_usart_handle, Referee_Interactive_info_t *UI
+  43:modules/referee/referee_task.c **** {
+  44:modules/referee/referee_task.c ****     referee_recv_info = RefereeInit(referee_usart_handle); // 初始化裁判系统的串口,并返
+  45:modules/referee/referee_task.c ****     Interactive_data = UI_data;                            // 获取UI绘制需要的机器人状�
+  46:modules/referee/referee_task.c ****     referee_recv_info->init_flag = 1;
+  47:modules/referee/referee_task.c ****     return referee_recv_info;
+  48:modules/referee/referee_task.c **** }
+  49:modules/referee/referee_task.c **** 
+  50:modules/referee/referee_task.c **** void UITask()
+  51:modules/referee/referee_task.c **** {
+  52:modules/referee/referee_task.c ****     RobotModeTest(Interactive_data); // 测试用函数，实现模式自动变化,用于检查该�
+  53:modules/referee/referee_task.c ****     MyUIRefresh(referee_recv_info, Interactive_data);
+  54:modules/referee/referee_task.c **** }
+  55:modules/referee/referee_task.c **** 
+  56:modules/referee/referee_task.c **** static Graph_Data_t UI_shoot_line[10]; // 射击准线
+  57:modules/referee/referee_task.c **** static Graph_Data_t UI_Energy[3];      // 电容能量条
+  58:modules/referee/referee_task.c **** static String_Data_t UI_State_sta[6];  // 机器人状态,静态只需画一次
+  59:modules/referee/referee_task.c **** static String_Data_t UI_State_dyn[6];  // 机器人状态,动态先add才能change
+  60:modules/referee/referee_task.c **** static uint32_t shoot_line_location[10] = {540, 960, 490, 515, 565};
+  61:modules/referee/referee_task.c **** 
+  62:modules/referee/referee_task.c **** void MyUIInit()
+  63:modules/referee/referee_task.c **** {
+  64:modules/referee/referee_task.c ****     if (!referee_recv_info->init_flag)
+  65:modules/referee/referee_task.c ****         vTaskDelete(NULL); // 如果没有初始化裁判系统则直接删除ui任务
+  66:modules/referee/referee_task.c ****     while (referee_recv_info->GameRobotState.robot_id == 0)
+  67:modules/referee/referee_task.c ****         osDelay(100); // 若还未收到裁判系统数据,等待一段时间后再检查
+  68:modules/referee/referee_task.c **** 
+  69:modules/referee/referee_task.c ****     DeterminRobotID();                                            // 确定ui要发送到的目标�
+  70:modules/referee/referee_task.c ****     UIDelete(&referee_recv_info->referee_id, UI_Data_Del_ALL, 0); // 清空UI
+  71:modules/referee/referee_task.c **** 
+  72:modules/referee/referee_task.c ****     // 绘制发射基准线
+  73:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[0], "sl0", UI_Graph_ADD, 7, UI_Color_White, 3, 710, shoot_line_locati
+  74:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[1], "sl1", UI_Graph_ADD, 7, UI_Color_White, 3, shoot_line_location[1]
+  75:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[2], "sl2", UI_Graph_ADD, 7, UI_Color_Yellow, 2, 810, shoot_line_locat
+  76:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[3], "sl3", UI_Graph_ADD, 7, UI_Color_Yellow, 2, 810, shoot_line_locat
+  77:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[4], "sl4", UI_Graph_ADD, 7, UI_Color_Yellow, 2, 810, shoot_line_locat
+  78:modules/referee/referee_task.c ****     UIGraphRefresh(&referee_recv_info->referee_id, 5, UI_shoot_line[0], UI_shoot_line[1], UI_shoot_
+  79:modules/referee/referee_task.c **** 
+  80:modules/referee/referee_task.c ****     // 绘制车辆状态标志指示
+  81:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[0], "ss0", UI_Graph_ADD, 8, UI_Color_Main, 15, 2, 150, 750, "chassis:"
+  82:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[0]);
+  83:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[1], "ss1", UI_Graph_ADD, 8, UI_Color_Yellow, 15, 2, 150, 700, "gimbal:
+  84:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[1]);
+  85:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[2], "ss2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 150, 650, "shoot:"
+  86:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[2]);
+  87:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[3], "ss3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 600, "frict:");
+  88:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[3]);
+  89:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[4], "ss4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 550, "lid:");
+  90:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[4]);
+  91:modules/referee/referee_task.c **** 
+  92:modules/referee/referee_task.c ****     // 绘制车辆状态标志，动态
+  93:modules/referee/referee_task.c ****     // 由于初始化时xxx_last_mode默认为0，所以此处对应UI也应该设为0时对应的
+  94:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_ADD, 8, UI_Color_Main, 15, 2, 270, 750, "zeroforce
+  95:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[0]);
+  96:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_ADD, 8, UI_Color_Yellow, 15, 2, 270, 700, "zerofor
+  97:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[1]);
+  98:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 270, 650, "off");
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 4
+
+
+  99:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 100:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 600, "off");
+ 101:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 102:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 550, "open ");
+ 103:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 104:modules/referee/referee_task.c **** 
+ 105:modules/referee/referee_task.c ****     // 底盘功率显示，静态
+ 106:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[5], "ss5", UI_Graph_ADD, 7, UI_Color_Green, 18, 2, 620, 230, "Power:")
+ 107:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[5]);
+ 108:modules/referee/referee_task.c ****     // 能量条框
+ 109:modules/referee/referee_task.c ****     UIRectangleDraw(&UI_Energy[0], "ss6", UI_Graph_ADD, 7, UI_Color_Green, 2, 720, 140, 1220, 180);
+ 110:modules/referee/referee_task.c ****     UIGraphRefresh(&referee_recv_info->referee_id, 1, UI_Energy[0]);
+ 111:modules/referee/referee_task.c **** 
+ 112:modules/referee/referee_task.c ****     // 底盘功率显示,动态
+ 113:modules/referee/referee_task.c ****     UIFloatDraw(&UI_Energy[1], "sd5", UI_Graph_ADD, 8, UI_Color_Green, 18, 2, 2, 750, 230, 24000);
+ 114:modules/referee/referee_task.c ****     // 能量条初始状态
+ 115:modules/referee/referee_task.c ****     UILineDraw(&UI_Energy[2], "sd6", UI_Graph_ADD, 8, UI_Color_Pink, 30, 720, 160, 1020, 160);
+ 116:modules/referee/referee_task.c ****     UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 117:modules/referee/referee_task.c **** }
+ 118:modules/referee/referee_task.c **** 
+ 119:modules/referee/referee_task.c **** // 测试用函数，实现模式自动变化,用于检查该任务和裁判系统是否连接正�
+ 120:modules/referee/referee_task.c **** static uint8_t count = 0;
+ 121:modules/referee/referee_task.c **** static uint16_t count1 = 0;
+ 122:modules/referee/referee_task.c **** static void RobotModeTest(Referee_Interactive_info_t *_Interactive_data) // 测试用函数，实�
+ 123:modules/referee/referee_task.c **** {
+  77              		.loc 1 123 1 is_stmt 1 view -0
+  78              		.cfi_startproc
+  79              		@ args = 0, pretend = 0, frame = 0
+  80              		@ frame_needed = 0, uses_anonymous_args = 0
+  81              		@ link register save eliminated.
+ 124:modules/referee/referee_task.c ****     count++;
+  82              		.loc 1 124 5 view .LVU15
+  83              		.loc 1 124 10 is_stmt 0 view .LVU16
+  84 0000 274A     		ldr	r2, .L15
+  85 0002 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+  86 0004 0133     		adds	r3, r3, #1
+  87 0006 DBB2     		uxtb	r3, r3
+  88 0008 1370     		strb	r3, [r2]
+ 125:modules/referee/referee_task.c ****     if (count >= 50)
+  89              		.loc 1 125 5 is_stmt 1 view .LVU17
+  90              		.loc 1 125 8 is_stmt 0 view .LVU18
+  91 000a 312B     		cmp	r3, #49
+  92 000c 06D9     		bls	.L5
+ 126:modules/referee/referee_task.c ****     {
+ 127:modules/referee/referee_task.c ****         count = 0;
+  93              		.loc 1 127 9 is_stmt 1 view .LVU19
+  94              		.loc 1 127 15 is_stmt 0 view .LVU20
+  95 000e 1346     		mov	r3, r2
+  96 0010 0022     		movs	r2, #0
+  97 0012 1A70     		strb	r2, [r3]
+ 128:modules/referee/referee_task.c ****         count1++;
+  98              		.loc 1 128 9 is_stmt 1 view .LVU21
+  99              		.loc 1 128 15 is_stmt 0 view .LVU22
+ 100 0014 234A     		ldr	r2, .L15+4
+ 101 0016 1388     		ldrh	r3, [r2]
+ 102 0018 0133     		adds	r3, r3, #1
+ 103 001a 1380     		strh	r3, [r2]	@ movhi
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 5
+
+
+ 104              	.L5:
+ 129:modules/referee/referee_task.c ****     }
+ 130:modules/referee/referee_task.c ****     switch (count1 % 4)
+ 105              		.loc 1 130 5 is_stmt 1 view .LVU23
+ 106              		.loc 1 130 20 is_stmt 0 view .LVU24
+ 107 001c 214B     		ldr	r3, .L15+4
+ 108 001e 1B88     		ldrh	r3, [r3]
+ 109              		.loc 1 130 5 view .LVU25
+ 110 0020 03F00303 		and	r3, r3, #3
+ 111 0024 032B     		cmp	r3, #3
+ 112 0026 3AD8     		bhi	.L4
+ 113 0028 DFE803F0 		tbb	[pc, r3]
+ 114              	.L8:
+ 115 002c 02       		.byte	(.L11-.L8)/2
+ 116 002d 20       		.byte	(.L10-.L8)/2
+ 117 002e 28       		.byte	(.L9-.L8)/2
+ 118 002f 31       		.byte	(.L7-.L8)/2
+ 119              		.p2align 1
+ 120              	.L11:
+ 131:modules/referee/referee_task.c ****     {
+ 132:modules/referee/referee_task.c ****     case 0:
+ 133:modules/referee/referee_task.c ****     {
+ 134:modules/referee/referee_task.c ****         _Interactive_data->chassis_mode = CHASSIS_ZERO_FORCE;
+ 121              		.loc 1 134 9 is_stmt 1 view .LVU26
+ 122              		.loc 1 134 41 is_stmt 0 view .LVU27
+ 123 0030 0023     		movs	r3, #0
+ 124 0032 4370     		strb	r3, [r0, #1]
+ 135:modules/referee/referee_task.c ****         _Interactive_data->gimbal_mode = GIMBAL_ZERO_FORCE;
+ 125              		.loc 1 135 9 is_stmt 1 view .LVU28
+ 126              		.loc 1 135 40 is_stmt 0 view .LVU29
+ 127 0034 8370     		strb	r3, [r0, #2]
+ 136:modules/referee/referee_task.c ****         _Interactive_data->shoot_mode = SHOOT_ON;
+ 128              		.loc 1 136 9 is_stmt 1 view .LVU30
+ 129              		.loc 1 136 39 is_stmt 0 view .LVU31
+ 130 0036 0122     		movs	r2, #1
+ 131 0038 C270     		strb	r2, [r0, #3]
+ 137:modules/referee/referee_task.c ****         _Interactive_data->friction_mode = FRICTION_ON;
+ 132              		.loc 1 137 9 is_stmt 1 view .LVU32
+ 133              		.loc 1 137 42 is_stmt 0 view .LVU33
+ 134 003a 0271     		strb	r2, [r0, #4]
+ 138:modules/referee/referee_task.c ****         _Interactive_data->lid_mode = LID_OPEN;
+ 135              		.loc 1 138 9 is_stmt 1 view .LVU34
+ 136              		.loc 1 138 37 is_stmt 0 view .LVU35
+ 137 003c 4371     		strb	r3, [r0, #5]
+ 139:modules/referee/referee_task.c ****         _Interactive_data->Chassis_Power_Data.chassis_power_mx += 3.5;
+ 138              		.loc 1 139 9 is_stmt 1 view .LVU36
+ 139              		.loc 1 139 46 is_stmt 0 view .LVU37
+ 140 003e D0F80630 		ldr	r3, [r0, #6]	@ unaligned
+ 141 0042 07EE903A 		vmov	s15, r3	@ int
+ 142              		.loc 1 139 64 view .LVU38
+ 143 0046 B0EE0C7A 		vmov.f32	s14, #3.5e+0
+ 144 004a 77EE877A 		vadd.f32	s15, s15, s14
+ 145 004e 17EE903A 		vmov	r3, s15
+ 146 0052 C0F80630 		str	r3, [r0, #6]	@ unaligned
+ 140:modules/referee/referee_task.c ****         if (_Interactive_data->Chassis_Power_Data.chassis_power_mx >= 18)
+ 147              		.loc 1 140 9 is_stmt 1 view .LVU39
+ 148              		.loc 1 140 12 is_stmt 0 view .LVU40
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 6
+
+
+ 149 0056 B3EE027A 		vmov.f32	s14, #1.8e+1
+ 150 005a F4EEC77A 		vcmpe.f32	s15, s14
+ 151 005e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 152 0062 1CDB     		blt	.L4
+ 141:modules/referee/referee_task.c ****             _Interactive_data->Chassis_Power_Data.chassis_power_mx = 0;
+ 153              		.loc 1 141 13 is_stmt 1 view .LVU41
+ 154              		.loc 1 141 68 is_stmt 0 view .LVU42
+ 155 0064 0023     		movs	r3, #0
+ 156 0066 C0F80630 		str	r3, [r0, #6]	@ unaligned
+ 157 006a 7047     		bx	lr
+ 158              	.L10:
+ 142:modules/referee/referee_task.c ****         break;
+ 143:modules/referee/referee_task.c ****     }
+ 144:modules/referee/referee_task.c ****     case 1:
+ 145:modules/referee/referee_task.c ****     {
+ 146:modules/referee/referee_task.c ****         _Interactive_data->chassis_mode = CHASSIS_ROTATE;
+ 159              		.loc 1 146 9 is_stmt 1 view .LVU43
+ 160              		.loc 1 146 41 is_stmt 0 view .LVU44
+ 161 006c 0123     		movs	r3, #1
+ 162 006e 4370     		strb	r3, [r0, #1]
+ 147:modules/referee/referee_task.c ****         _Interactive_data->gimbal_mode = GIMBAL_FREE_MODE;
+ 163              		.loc 1 147 9 is_stmt 1 view .LVU45
+ 164              		.loc 1 147 40 is_stmt 0 view .LVU46
+ 165 0070 8370     		strb	r3, [r0, #2]
+ 148:modules/referee/referee_task.c ****         _Interactive_data->shoot_mode = SHOOT_OFF;
+ 166              		.loc 1 148 9 is_stmt 1 view .LVU47
+ 167              		.loc 1 148 39 is_stmt 0 view .LVU48
+ 168 0072 0022     		movs	r2, #0
+ 169 0074 C270     		strb	r2, [r0, #3]
+ 149:modules/referee/referee_task.c ****         _Interactive_data->friction_mode = FRICTION_OFF;
+ 170              		.loc 1 149 9 is_stmt 1 view .LVU49
+ 171              		.loc 1 149 42 is_stmt 0 view .LVU50
+ 172 0076 0271     		strb	r2, [r0, #4]
+ 150:modules/referee/referee_task.c ****         _Interactive_data->lid_mode = LID_CLOSE;
+ 173              		.loc 1 150 9 is_stmt 1 view .LVU51
+ 174              		.loc 1 150 37 is_stmt 0 view .LVU52
+ 175 0078 4371     		strb	r3, [r0, #5]
+ 151:modules/referee/referee_task.c ****         break;
+ 176              		.loc 1 151 9 is_stmt 1 view .LVU53
+ 177 007a 7047     		bx	lr
+ 178              	.L9:
+ 152:modules/referee/referee_task.c ****     }
+ 153:modules/referee/referee_task.c ****     case 2:
+ 154:modules/referee/referee_task.c ****     {
+ 155:modules/referee/referee_task.c ****         _Interactive_data->chassis_mode = CHASSIS_NO_FOLLOW;
+ 179              		.loc 1 155 9 view .LVU54
+ 180              		.loc 1 155 41 is_stmt 0 view .LVU55
+ 181 007c 0223     		movs	r3, #2
+ 182 007e 4370     		strb	r3, [r0, #1]
+ 156:modules/referee/referee_task.c ****         _Interactive_data->gimbal_mode = GIMBAL_GYRO_MODE;
+ 183              		.loc 1 156 9 is_stmt 1 view .LVU56
+ 184              		.loc 1 156 40 is_stmt 0 view .LVU57
+ 185 0080 8370     		strb	r3, [r0, #2]
+ 157:modules/referee/referee_task.c ****         _Interactive_data->shoot_mode = SHOOT_ON;
+ 186              		.loc 1 157 9 is_stmt 1 view .LVU58
+ 187              		.loc 1 157 39 is_stmt 0 view .LVU59
+ 188 0082 0123     		movs	r3, #1
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 7
+
+
+ 189 0084 C370     		strb	r3, [r0, #3]
+ 158:modules/referee/referee_task.c ****         _Interactive_data->friction_mode = FRICTION_ON;
+ 190              		.loc 1 158 9 is_stmt 1 view .LVU60
+ 191              		.loc 1 158 42 is_stmt 0 view .LVU61
+ 192 0086 0371     		strb	r3, [r0, #4]
+ 159:modules/referee/referee_task.c ****         _Interactive_data->lid_mode = LID_OPEN;
+ 193              		.loc 1 159 9 is_stmt 1 view .LVU62
+ 194              		.loc 1 159 37 is_stmt 0 view .LVU63
+ 195 0088 0023     		movs	r3, #0
+ 196 008a 4371     		strb	r3, [r0, #5]
+ 160:modules/referee/referee_task.c ****         break;
+ 197              		.loc 1 160 9 is_stmt 1 view .LVU64
+ 198 008c 7047     		bx	lr
+ 199              	.L7:
+ 161:modules/referee/referee_task.c ****     }
+ 162:modules/referee/referee_task.c ****     case 3:
+ 163:modules/referee/referee_task.c ****     {
+ 164:modules/referee/referee_task.c ****         _Interactive_data->chassis_mode = CHASSIS_FOLLOW_GIMBAL_YAW;
+ 200              		.loc 1 164 9 view .LVU65
+ 201              		.loc 1 164 41 is_stmt 0 view .LVU66
+ 202 008e 0323     		movs	r3, #3
+ 203 0090 4370     		strb	r3, [r0, #1]
+ 165:modules/referee/referee_task.c ****         _Interactive_data->gimbal_mode = GIMBAL_ZERO_FORCE;
+ 204              		.loc 1 165 9 is_stmt 1 view .LVU67
+ 205              		.loc 1 165 40 is_stmt 0 view .LVU68
+ 206 0092 0023     		movs	r3, #0
+ 207 0094 8370     		strb	r3, [r0, #2]
+ 166:modules/referee/referee_task.c ****         _Interactive_data->shoot_mode = SHOOT_OFF;
+ 208              		.loc 1 166 9 is_stmt 1 view .LVU69
+ 209              		.loc 1 166 39 is_stmt 0 view .LVU70
+ 210 0096 C370     		strb	r3, [r0, #3]
+ 167:modules/referee/referee_task.c ****         _Interactive_data->friction_mode = FRICTION_OFF;
+ 211              		.loc 1 167 9 is_stmt 1 view .LVU71
+ 212              		.loc 1 167 42 is_stmt 0 view .LVU72
+ 213 0098 0371     		strb	r3, [r0, #4]
+ 168:modules/referee/referee_task.c ****         _Interactive_data->lid_mode = LID_CLOSE;
+ 214              		.loc 1 168 9 is_stmt 1 view .LVU73
+ 215              		.loc 1 168 37 is_stmt 0 view .LVU74
+ 216 009a 0123     		movs	r3, #1
+ 217 009c 4371     		strb	r3, [r0, #5]
+ 169:modules/referee/referee_task.c ****         break;
+ 218              		.loc 1 169 9 is_stmt 1 view .LVU75
+ 219              	.L4:
+ 170:modules/referee/referee_task.c ****     }
+ 171:modules/referee/referee_task.c ****     default:
+ 172:modules/referee/referee_task.c ****         break;
+ 173:modules/referee/referee_task.c ****     }
+ 174:modules/referee/referee_task.c **** }
+ 220              		.loc 1 174 1 is_stmt 0 view .LVU76
+ 221 009e 7047     		bx	lr
+ 222              	.L16:
+ 223              		.align	2
+ 224              	.L15:
+ 225 00a0 00000000 		.word	count
+ 226 00a4 00000000 		.word	count1
+ 227              		.cfi_endproc
+ 228              	.LFE280:
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 8
+
+
+ 230              		.section	.text.UIChangeCheck,"ax",%progbits
+ 231              		.align	1
+ 232              		.syntax unified
+ 233              		.thumb
+ 234              		.thumb_func
+ 236              	UIChangeCheck:
+ 237              	.LVL1:
+ 238              	.LFB282:
+ 175:modules/referee/referee_task.c **** 
+ 176:modules/referee/referee_task.c **** static void MyUIRefresh(referee_info_t *referee_recv_info, Referee_Interactive_info_t *_Interactive
+ 177:modules/referee/referee_task.c **** {
+ 178:modules/referee/referee_task.c ****     UIChangeCheck(_Interactive_data);
+ 179:modules/referee/referee_task.c ****     // chassis
+ 180:modules/referee/referee_task.c ****     if (_Interactive_data->Referee_Interactive_Flag.chassis_flag == 1)
+ 181:modules/referee/referee_task.c ****     {
+ 182:modules/referee/referee_task.c ****         switch (_Interactive_data->chassis_mode)
+ 183:modules/referee/referee_task.c ****         {
+ 184:modules/referee/referee_task.c ****         case CHASSIS_ZERO_FORCE:
+ 185:modules/referee/referee_task.c ****             UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Main, 15, 2, 270, 750,
+ 186:modules/referee/referee_task.c ****             break;
+ 187:modules/referee/referee_task.c ****         case CHASSIS_ROTATE:
+ 188:modules/referee/referee_task.c ****             UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Main, 15, 2, 270, 750,
+ 189:modules/referee/referee_task.c ****             // 此处注意字数对齐问题，字数相同才能覆盖掉
+ 190:modules/referee/referee_task.c ****             break;
+ 191:modules/referee/referee_task.c ****         case CHASSIS_NO_FOLLOW:
+ 192:modules/referee/referee_task.c ****             UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Main, 15, 2, 270, 750,
+ 193:modules/referee/referee_task.c ****             break;
+ 194:modules/referee/referee_task.c ****         case CHASSIS_FOLLOW_GIMBAL_YAW:
+ 195:modules/referee/referee_task.c ****             UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Main, 15, 2, 270, 750,
+ 196:modules/referee/referee_task.c ****             break;
+ 197:modules/referee/referee_task.c ****         }
+ 198:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[0]);
+ 199:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.chassis_flag = 0;
+ 200:modules/referee/referee_task.c ****     }
+ 201:modules/referee/referee_task.c ****     // gimbal
+ 202:modules/referee/referee_task.c ****     if (_Interactive_data->Referee_Interactive_Flag.gimbal_flag == 1)
+ 203:modules/referee/referee_task.c ****     {
+ 204:modules/referee/referee_task.c ****         switch (_Interactive_data->gimbal_mode)
+ 205:modules/referee/referee_task.c ****         {
+ 206:modules/referee/referee_task.c ****         case GIMBAL_ZERO_FORCE:
+ 207:modules/referee/referee_task.c ****         {
+ 208:modules/referee/referee_task.c ****             UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_Change, 8, UI_Color_Yellow, 15, 2, 270, 70
+ 209:modules/referee/referee_task.c ****             break;
+ 210:modules/referee/referee_task.c ****         }
+ 211:modules/referee/referee_task.c ****         case GIMBAL_FREE_MODE:
+ 212:modules/referee/referee_task.c ****         {
+ 213:modules/referee/referee_task.c ****             UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_Change, 8, UI_Color_Yellow, 15, 2, 270, 70
+ 214:modules/referee/referee_task.c ****             break;
+ 215:modules/referee/referee_task.c ****         }
+ 216:modules/referee/referee_task.c ****         case GIMBAL_GYRO_MODE:
+ 217:modules/referee/referee_task.c ****         {
+ 218:modules/referee/referee_task.c ****             UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_Change, 8, UI_Color_Yellow, 15, 2, 270, 70
+ 219:modules/referee/referee_task.c ****             break;
+ 220:modules/referee/referee_task.c ****         }
+ 221:modules/referee/referee_task.c ****         }
+ 222:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[1]);
+ 223:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.gimbal_flag = 0;
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 9
+
+
+ 224:modules/referee/referee_task.c ****     }
+ 225:modules/referee/referee_task.c ****     // shoot
+ 226:modules/referee/referee_task.c ****     if (_Interactive_data->Referee_Interactive_Flag.shoot_flag == 1)
+ 227:modules/referee/referee_task.c ****     {
+ 228:modules/referee/referee_task.c ****         UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Pink, 15, 2, 270, 650, _In
+ 229:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 230:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.shoot_flag = 0;
+ 231:modules/referee/referee_task.c ****     }
+ 232:modules/referee/referee_task.c ****     // friction
+ 233:modules/referee/referee_task.c ****     if (_Interactive_data->Referee_Interactive_Flag.friction_flag == 1)
+ 234:modules/referee/referee_task.c ****     {
+ 235:modules/referee/referee_task.c ****         UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Pink, 15, 2, 270, 600, _In
+ 236:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 237:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.friction_flag = 0;
+ 238:modules/referee/referee_task.c ****     }
+ 239:modules/referee/referee_task.c ****     // lid
+ 240:modules/referee/referee_task.c ****     if (_Interactive_data->Referee_Interactive_Flag.lid_flag == 1)
+ 241:modules/referee/referee_task.c ****     {
+ 242:modules/referee/referee_task.c ****         UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_Change, 8, UI_Color_Pink, 15, 2, 270, 550, _In
+ 243:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 244:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.lid_flag = 0;
+ 245:modules/referee/referee_task.c ****     }
+ 246:modules/referee/referee_task.c ****     // power
+ 247:modules/referee/referee_task.c ****     if (_Interactive_data->Referee_Interactive_Flag.Power_flag == 1)
+ 248:modules/referee/referee_task.c ****     {
+ 249:modules/referee/referee_task.c ****         UIFloatDraw(&UI_Energy[1], "sd5", UI_Graph_Change, 8, UI_Color_Green, 18, 2, 2, 750, 230, _
+ 250:modules/referee/referee_task.c ****         UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 720, 160, (uint32_t
+ 251:modules/referee/referee_task.c ****         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 252:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.Power_flag = 0;
+ 253:modules/referee/referee_task.c ****     }
+ 254:modules/referee/referee_task.c **** }
+ 255:modules/referee/referee_task.c **** 
+ 256:modules/referee/referee_task.c **** /**
+ 257:modules/referee/referee_task.c ****  * @brief  模式切换检测,模式发生切换时，对flag置位
+ 258:modules/referee/referee_task.c ****  * @param  Referee_Interactive_info_t *_Interactive_data
+ 259:modules/referee/referee_task.c ****  * @retval none
+ 260:modules/referee/referee_task.c ****  * @attention
+ 261:modules/referee/referee_task.c ****  */
+ 262:modules/referee/referee_task.c **** static void UIChangeCheck(Referee_Interactive_info_t *_Interactive_data)
+ 263:modules/referee/referee_task.c **** {
+ 239              		.loc 1 263 1 is_stmt 1 view -0
+ 240              		.cfi_startproc
+ 241              		@ args = 0, pretend = 0, frame = 0
+ 242              		@ frame_needed = 0, uses_anonymous_args = 0
+ 243              		@ link register save eliminated.
+ 264:modules/referee/referee_task.c ****     if (_Interactive_data->chassis_mode != _Interactive_data->chassis_last_mode)
+ 244              		.loc 1 264 5 view .LVU78
+ 245              		.loc 1 264 26 is_stmt 0 view .LVU79
+ 246 0000 4378     		ldrb	r3, [r0, #1]	@ zero_extendqisi2
+ 247              		.loc 1 264 61 view .LVU80
+ 248 0002 827A     		ldrb	r2, [r0, #10]	@ zero_extendqisi2
+ 249              		.loc 1 264 8 view .LVU81
+ 250 0004 9342     		cmp	r3, r2
+ 251 0006 04D0     		beq	.L18
+ 265:modules/referee/referee_task.c ****     {
+ 266:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.chassis_flag = 1;
+ 252              		.loc 1 266 9 is_stmt 1 view .LVU82
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 10
+
+
+ 253              		.loc 1 266 66 is_stmt 0 view .LVU83
+ 254 0008 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 255 000a 42F00102 		orr	r2, r2, #1
+ 256 000e 0270     		strb	r2, [r0]
+ 267:modules/referee/referee_task.c ****         _Interactive_data->chassis_last_mode = _Interactive_data->chassis_mode;
+ 257              		.loc 1 267 9 is_stmt 1 view .LVU84
+ 258              		.loc 1 267 46 is_stmt 0 view .LVU85
+ 259 0010 8372     		strb	r3, [r0, #10]
+ 260              	.L18:
+ 268:modules/referee/referee_task.c ****     }
+ 269:modules/referee/referee_task.c **** 
+ 270:modules/referee/referee_task.c ****     if (_Interactive_data->gimbal_mode != _Interactive_data->gimbal_last_mode)
+ 261              		.loc 1 270 5 is_stmt 1 view .LVU86
+ 262              		.loc 1 270 26 is_stmt 0 view .LVU87
+ 263 0012 8378     		ldrb	r3, [r0, #2]	@ zero_extendqisi2
+ 264              		.loc 1 270 60 view .LVU88
+ 265 0014 C27A     		ldrb	r2, [r0, #11]	@ zero_extendqisi2
+ 266              		.loc 1 270 8 view .LVU89
+ 267 0016 9342     		cmp	r3, r2
+ 268 0018 04D0     		beq	.L19
+ 271:modules/referee/referee_task.c ****     {
+ 272:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.gimbal_flag = 1;
+ 269              		.loc 1 272 9 is_stmt 1 view .LVU90
+ 270              		.loc 1 272 65 is_stmt 0 view .LVU91
+ 271 001a 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 272 001c 42F00202 		orr	r2, r2, #2
+ 273 0020 0270     		strb	r2, [r0]
+ 273:modules/referee/referee_task.c ****         _Interactive_data->gimbal_last_mode = _Interactive_data->gimbal_mode;
+ 274              		.loc 1 273 9 is_stmt 1 view .LVU92
+ 275              		.loc 1 273 45 is_stmt 0 view .LVU93
+ 276 0022 C372     		strb	r3, [r0, #11]
+ 277              	.L19:
+ 274:modules/referee/referee_task.c ****     }
+ 275:modules/referee/referee_task.c **** 
+ 276:modules/referee/referee_task.c ****     if (_Interactive_data->shoot_mode != _Interactive_data->shoot_last_mode)
+ 278              		.loc 1 276 5 is_stmt 1 view .LVU94
+ 279              		.loc 1 276 26 is_stmt 0 view .LVU95
+ 280 0024 C378     		ldrb	r3, [r0, #3]	@ zero_extendqisi2
+ 281              		.loc 1 276 59 view .LVU96
+ 282 0026 027B     		ldrb	r2, [r0, #12]	@ zero_extendqisi2
+ 283              		.loc 1 276 8 view .LVU97
+ 284 0028 9342     		cmp	r3, r2
+ 285 002a 04D0     		beq	.L20
+ 277:modules/referee/referee_task.c ****     {
+ 278:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.shoot_flag = 1;
+ 286              		.loc 1 278 9 is_stmt 1 view .LVU98
+ 287              		.loc 1 278 64 is_stmt 0 view .LVU99
+ 288 002c 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 289 002e 42F00402 		orr	r2, r2, #4
+ 290 0032 0270     		strb	r2, [r0]
+ 279:modules/referee/referee_task.c ****         _Interactive_data->shoot_last_mode = _Interactive_data->shoot_mode;
+ 291              		.loc 1 279 9 is_stmt 1 view .LVU100
+ 292              		.loc 1 279 44 is_stmt 0 view .LVU101
+ 293 0034 0373     		strb	r3, [r0, #12]
+ 294              	.L20:
+ 280:modules/referee/referee_task.c ****     }
+ 281:modules/referee/referee_task.c **** 
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 11
+
+
+ 282:modules/referee/referee_task.c ****     if (_Interactive_data->friction_mode != _Interactive_data->friction_last_mode)
+ 295              		.loc 1 282 5 is_stmt 1 view .LVU102
+ 296              		.loc 1 282 26 is_stmt 0 view .LVU103
+ 297 0036 0379     		ldrb	r3, [r0, #4]	@ zero_extendqisi2
+ 298              		.loc 1 282 62 view .LVU104
+ 299 0038 427B     		ldrb	r2, [r0, #13]	@ zero_extendqisi2
+ 300              		.loc 1 282 8 view .LVU105
+ 301 003a 9342     		cmp	r3, r2
+ 302 003c 04D0     		beq	.L21
+ 283:modules/referee/referee_task.c ****     {
+ 284:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.friction_flag = 1;
+ 303              		.loc 1 284 9 is_stmt 1 view .LVU106
+ 304              		.loc 1 284 67 is_stmt 0 view .LVU107
+ 305 003e 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 306 0040 42F01002 		orr	r2, r2, #16
+ 307 0044 0270     		strb	r2, [r0]
+ 285:modules/referee/referee_task.c ****         _Interactive_data->friction_last_mode = _Interactive_data->friction_mode;
+ 308              		.loc 1 285 9 is_stmt 1 view .LVU108
+ 309              		.loc 1 285 47 is_stmt 0 view .LVU109
+ 310 0046 4373     		strb	r3, [r0, #13]
+ 311              	.L21:
+ 286:modules/referee/referee_task.c ****     }
+ 287:modules/referee/referee_task.c **** 
+ 288:modules/referee/referee_task.c ****     if (_Interactive_data->lid_mode != _Interactive_data->lid_last_mode)
+ 312              		.loc 1 288 5 is_stmt 1 view .LVU110
+ 313              		.loc 1 288 26 is_stmt 0 view .LVU111
+ 314 0048 4379     		ldrb	r3, [r0, #5]	@ zero_extendqisi2
+ 315              		.loc 1 288 57 view .LVU112
+ 316 004a 827B     		ldrb	r2, [r0, #14]	@ zero_extendqisi2
+ 317              		.loc 1 288 8 view .LVU113
+ 318 004c 9342     		cmp	r3, r2
+ 319 004e 04D0     		beq	.L22
+ 289:modules/referee/referee_task.c ****     {
+ 290:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.lid_flag = 1;
+ 320              		.loc 1 290 9 is_stmt 1 view .LVU114
+ 321              		.loc 1 290 62 is_stmt 0 view .LVU115
+ 322 0050 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 323 0052 42F00802 		orr	r2, r2, #8
+ 324 0056 0270     		strb	r2, [r0]
+ 291:modules/referee/referee_task.c ****         _Interactive_data->lid_last_mode = _Interactive_data->lid_mode;
+ 325              		.loc 1 291 9 is_stmt 1 view .LVU116
+ 326              		.loc 1 291 42 is_stmt 0 view .LVU117
+ 327 0058 8373     		strb	r3, [r0, #14]
+ 328              	.L22:
+ 292:modules/referee/referee_task.c ****     }
+ 293:modules/referee/referee_task.c **** 
+ 294:modules/referee/referee_task.c ****     if (_Interactive_data->Chassis_Power_Data.chassis_power_mx != _Interactive_data->Chassis_last_P
+ 329              		.loc 1 294 5 is_stmt 1 view .LVU118
+ 330              		.loc 1 294 46 is_stmt 0 view .LVU119
+ 331 005a D0F80630 		ldr	r3, [r0, #6]	@ unaligned
+ 332              		.loc 1 294 109 view .LVU120
+ 333 005e D0F80F20 		ldr	r2, [r0, #15]	@ unaligned
+ 334              		.loc 1 294 8 view .LVU121
+ 335 0062 07EE903A 		vmov	s15, r3
+ 336 0066 07EE102A 		vmov	s14, r2
+ 337 006a F4EE477A 		vcmp.f32	s15, s14
+ 338 006e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 12
+
+
+ 339 0072 05D0     		beq	.L17
+ 295:modules/referee/referee_task.c ****     {
+ 296:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.Power_flag = 1;
+ 340              		.loc 1 296 9 is_stmt 1 view .LVU122
+ 341              		.loc 1 296 64 is_stmt 0 view .LVU123
+ 342 0074 0278     		ldrb	r2, [r0]	@ zero_extendqisi2
+ 343 0076 42F02002 		orr	r2, r2, #32
+ 344 007a 0270     		strb	r2, [r0]
+ 297:modules/referee/referee_task.c ****         _Interactive_data->Chassis_last_Power_Data.chassis_power_mx = _Interactive_data->Chassis_Po
+ 345              		.loc 1 297 9 is_stmt 1 view .LVU124
+ 346              		.loc 1 297 69 is_stmt 0 view .LVU125
+ 347 007c C0F80F30 		str	r3, [r0, #15]	@ unaligned
+ 348              	.L17:
+ 298:modules/referee/referee_task.c ****     }
+ 299:modules/referee/referee_task.c **** }
+ 349              		.loc 1 299 1 view .LVU126
+ 350 0080 7047     		bx	lr
+ 351              		.cfi_endproc
+ 352              	.LFE282:
+ 354              		.section	.rodata.MyUIRefresh.str1.4,"aMS",%progbits,1
+ 355              		.align	2
+ 356              	.LC0:
+ 357 0000 6F6E2000 		.ascii	"on \000"
+ 358              		.align	2
+ 359              	.LC1:
+ 360 0004 6F666600 		.ascii	"off\000"
+ 361              		.align	2
+ 362              	.LC2:
+ 363 0008 6F70656E 		.ascii	"open \000"
+ 363      2000
+ 364 000e 0000     		.align	2
+ 365              	.LC3:
+ 366 0010 636C6F73 		.ascii	"close\000"
+ 366      6500
+ 367 0016 0000     		.align	2
+ 368              	.LC4:
+ 369 0018 73643000 		.ascii	"sd0\000"
+ 370              		.align	2
+ 371              	.LC5:
+ 372 001c 7A65726F 		.ascii	"zeroforce\000"
+ 372      666F7263 
+ 372      6500
+ 373 0026 0000     		.align	2
+ 374              	.LC6:
+ 375 0028 726F7461 		.ascii	"rotate   \000"
+ 375      74652020 
+ 375      2000
+ 376 0032 0000     		.align	2
+ 377              	.LC7:
+ 378 0034 6E6F666F 		.ascii	"nofollow \000"
+ 378      6C6C6F77 
+ 378      2000
+ 379 003e 0000     		.align	2
+ 380              	.LC8:
+ 381 0040 666F6C6C 		.ascii	"follow   \000"
+ 381      6F772020 
+ 381      2000
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 13
+
+
+ 382 004a 0000     		.align	2
+ 383              	.LC9:
+ 384 004c 73643100 		.ascii	"sd1\000"
+ 385              		.align	2
+ 386              	.LC10:
+ 387 0050 66726565 		.ascii	"free     \000"
+ 387      20202020 
+ 387      2000
+ 388 005a 0000     		.align	2
+ 389              	.LC11:
+ 390 005c 6779726F 		.ascii	"gyro     \000"
+ 390      20202020 
+ 390      2000
+ 391 0066 0000     		.align	2
+ 392              	.LC12:
+ 393 0068 73643200 		.ascii	"sd2\000"
+ 394              		.align	2
+ 395              	.LC13:
+ 396 006c 73643300 		.ascii	"sd3\000"
+ 397              		.align	2
+ 398              	.LC14:
+ 399 0070 73643400 		.ascii	"sd4\000"
+ 400              		.align	2
+ 401              	.LC15:
+ 402 0074 73643500 		.ascii	"sd5\000"
+ 403              		.align	2
+ 404              	.LC16:
+ 405 0078 73643600 		.ascii	"sd6\000"
+ 406              		.section	.text.MyUIRefresh,"ax",%progbits
+ 407              		.align	1
+ 408              		.syntax unified
+ 409              		.thumb
+ 410              		.thumb_func
+ 412              	MyUIRefresh:
+ 413              	.LVL2:
+ 414              	.LFB281:
+ 177:modules/referee/referee_task.c ****     UIChangeCheck(_Interactive_data);
+ 415              		.loc 1 177 1 is_stmt 1 view -0
+ 416              		.cfi_startproc
+ 417              		@ args = 0, pretend = 0, frame = 0
+ 418              		@ frame_needed = 0, uses_anonymous_args = 0
+ 177:modules/referee/referee_task.c ****     UIChangeCheck(_Interactive_data);
+ 419              		.loc 1 177 1 is_stmt 0 view .LVU128
+ 420 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+ 421              	.LCFI0:
+ 422              		.cfi_def_cfa_offset 32
+ 423              		.cfi_offset 4, -32
+ 424              		.cfi_offset 5, -28
+ 425              		.cfi_offset 6, -24
+ 426              		.cfi_offset 7, -20
+ 427              		.cfi_offset 8, -16
+ 428              		.cfi_offset 9, -12
+ 429              		.cfi_offset 10, -8
+ 430              		.cfi_offset 14, -4
+ 431 0004 8AB0     		sub	sp, sp, #40
+ 432              	.LCFI1:
+ 433              		.cfi_def_cfa_offset 72
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 14
+
+
+ 434 0006 0546     		mov	r5, r0
+ 435 0008 0C46     		mov	r4, r1
+ 178:modules/referee/referee_task.c ****     // chassis
+ 436              		.loc 1 178 5 is_stmt 1 view .LVU129
+ 437 000a 0846     		mov	r0, r1
+ 438              	.LVL3:
+ 178:modules/referee/referee_task.c ****     // chassis
+ 439              		.loc 1 178 5 is_stmt 0 view .LVU130
+ 440 000c FFF7FEFF 		bl	UIChangeCheck
+ 441              	.LVL4:
+ 180:modules/referee/referee_task.c ****     {
+ 442              		.loc 1 180 5 is_stmt 1 view .LVU131
+ 180:modules/referee/referee_task.c ****     {
+ 443              		.loc 1 180 66 is_stmt 0 view .LVU132
+ 444 0010 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 180:modules/referee/referee_task.c ****     {
+ 445              		.loc 1 180 8 view .LVU133
+ 446 0012 13F0010F 		tst	r3, #1
+ 447 0016 32D0     		beq	.L25
+ 182:modules/referee/referee_task.c ****         {
+ 448              		.loc 1 182 9 is_stmt 1 view .LVU134
+ 182:modules/referee/referee_task.c ****         {
+ 449              		.loc 1 182 34 is_stmt 0 view .LVU135
+ 450 0018 6378     		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 182:modules/referee/referee_task.c ****         {
+ 451              		.loc 1 182 9 view .LVU136
+ 452 001a 032B     		cmp	r3, #3
+ 453 001c 16D8     		bhi	.L26
+ 454 001e DFE803F0 		tbb	[pc, r3]
+ 455              	.L28:
+ 456 0022 02       		.byte	(.L31-.L28)/2
+ 457 0023 4F       		.byte	(.L30-.L28)/2
+ 458 0024 63       		.byte	(.L29-.L28)/2
+ 459 0025 77       		.byte	(.L27-.L28)/2
+ 460              		.p2align 1
+ 461              	.L31:
+ 185:modules/referee/referee_task.c ****             break;
+ 462              		.loc 1 185 13 is_stmt 1 view .LVU137
+ 463 0026 4E4B     		ldr	r3, .L54
+ 464 0028 0593     		str	r3, [sp, #20]
+ 465 002a 40F2EE23 		movw	r3, #750
+ 466 002e 0493     		str	r3, [sp, #16]
+ 467 0030 4FF48773 		mov	r3, #270
+ 468 0034 0393     		str	r3, [sp, #12]
+ 469 0036 0222     		movs	r2, #2
+ 470 0038 0292     		str	r2, [sp, #8]
+ 471 003a 0F23     		movs	r3, #15
+ 472 003c 0193     		str	r3, [sp, #4]
+ 473 003e 0023     		movs	r3, #0
+ 474 0040 0093     		str	r3, [sp]
+ 475 0042 0823     		movs	r3, #8
+ 476 0044 4749     		ldr	r1, .L54+4
+ 477 0046 4848     		ldr	r0, .L54+8
+ 478 0048 FFF7FEFF 		bl	UICharDraw
+ 479              	.LVL5:
+ 186:modules/referee/referee_task.c ****         case CHASSIS_ROTATE:
+ 480              		.loc 1 186 13 view .LVU138
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 15
+
+
+ 481              	.L26:
+ 198:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.chassis_flag = 0;
+ 482              		.loc 1 198 9 view .LVU139
+ 483 004c 464E     		ldr	r6, .L54+8
+ 484 004e EC46     		mov	ip, sp
+ 485 0050 06F10C0E 		add	lr, r6, #12
+ 486 0054 BEE80F00 		ldmia	lr!, {r0, r1, r2, r3}
+ 487 0058 ACE80F00 		stmia	ip!, {r0, r1, r2, r3}
+ 488 005c BEE80F00 		ldmia	lr!, {r0, r1, r2, r3}
+ 489 0060 ACE80F00 		stmia	ip!, {r0, r1, r2, r3}
+ 490 0064 DEF80030 		ldr	r3, [lr]
+ 491 0068 8CF80030 		strb	r3, [ip]
+ 492 006c 96E80E00 		ldm	r6, {r1, r2, r3}
+ 493 0070 2846     		mov	r0, r5
+ 494 0072 FFF7FEFF 		bl	UICharRefresh
+ 495              	.LVL6:
+ 199:modules/referee/referee_task.c ****     }
+ 496              		.loc 1 199 9 view .LVU140
+ 199:modules/referee/referee_task.c ****     }
+ 497              		.loc 1 199 66 is_stmt 0 view .LVU141
+ 498 0076 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 499 0078 23F00103 		bic	r3, r3, #1
+ 500 007c 2370     		strb	r3, [r4]
+ 501              	.L25:
+ 202:modules/referee/referee_task.c ****     {
+ 502              		.loc 1 202 5 is_stmt 1 view .LVU142
+ 202:modules/referee/referee_task.c ****     {
+ 503              		.loc 1 202 65 is_stmt 0 view .LVU143
+ 504 007e 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 202:modules/referee/referee_task.c ****     {
+ 505              		.loc 1 202 8 view .LVU144
+ 506 0080 13F0020F 		tst	r3, #2
+ 507 0084 00F0B980 		beq	.L32
+ 204:modules/referee/referee_task.c ****         {
+ 508              		.loc 1 204 9 is_stmt 1 view .LVU145
+ 204:modules/referee/referee_task.c ****         {
+ 509              		.loc 1 204 34 is_stmt 0 view .LVU146
+ 510 0088 A378     		ldrb	r3, [r4, #2]	@ zero_extendqisi2
+ 204:modules/referee/referee_task.c ****         {
+ 511              		.loc 1 204 9 view .LVU147
+ 512 008a 012B     		cmp	r3, #1
+ 513 008c 54D0     		beq	.L33
+ 514 008e 022B     		cmp	r3, #2
+ 515 0090 78D0     		beq	.L34
+ 516 0092 002B     		cmp	r3, #0
+ 517 0094 40F08980 		bne	.L35
+ 208:modules/referee/referee_task.c ****             break;
+ 518              		.loc 1 208 13 is_stmt 1 view .LVU148
+ 519 0098 314B     		ldr	r3, .L54
+ 520 009a 0593     		str	r3, [sp, #20]
+ 521 009c 4FF42F73 		mov	r3, #700
+ 522 00a0 0493     		str	r3, [sp, #16]
+ 523 00a2 4FF48773 		mov	r3, #270
+ 524 00a6 0393     		str	r3, [sp, #12]
+ 525 00a8 0222     		movs	r2, #2
+ 526 00aa 0292     		str	r2, [sp, #8]
+ 527 00ac 0F23     		movs	r3, #15
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 16
+
+
+ 528 00ae 0193     		str	r3, [sp, #4]
+ 529 00b0 0123     		movs	r3, #1
+ 530 00b2 0093     		str	r3, [sp]
+ 531 00b4 0823     		movs	r3, #8
+ 532 00b6 2D49     		ldr	r1, .L54+12
+ 533 00b8 2D48     		ldr	r0, .L54+16
+ 534 00ba FFF7FEFF 		bl	UICharDraw
+ 535              	.LVL7:
+ 209:modules/referee/referee_task.c ****         }
+ 536              		.loc 1 209 13 view .LVU149
+ 537 00be 74E0     		b	.L35
+ 538              	.L30:
+ 188:modules/referee/referee_task.c ****             // 此处注意字数对齐问题，字数相同才能覆盖掉
+ 539              		.loc 1 188 13 view .LVU150
+ 540 00c0 2C4B     		ldr	r3, .L54+20
+ 541 00c2 0593     		str	r3, [sp, #20]
+ 542 00c4 40F2EE23 		movw	r3, #750
+ 543 00c8 0493     		str	r3, [sp, #16]
+ 544 00ca 4FF48773 		mov	r3, #270
+ 545 00ce 0393     		str	r3, [sp, #12]
+ 546 00d0 0222     		movs	r2, #2
+ 547 00d2 0292     		str	r2, [sp, #8]
+ 548 00d4 0F23     		movs	r3, #15
+ 549 00d6 0193     		str	r3, [sp, #4]
+ 550 00d8 0023     		movs	r3, #0
+ 551 00da 0093     		str	r3, [sp]
+ 552 00dc 0823     		movs	r3, #8
+ 553 00de 2149     		ldr	r1, .L54+4
+ 554 00e0 2148     		ldr	r0, .L54+8
+ 555 00e2 FFF7FEFF 		bl	UICharDraw
+ 556              	.LVL8:
+ 190:modules/referee/referee_task.c ****         case CHASSIS_NO_FOLLOW:
+ 557              		.loc 1 190 13 view .LVU151
+ 558 00e6 B1E7     		b	.L26
+ 559              	.L29:
+ 192:modules/referee/referee_task.c ****             break;
+ 560              		.loc 1 192 13 view .LVU152
+ 561 00e8 234B     		ldr	r3, .L54+24
+ 562 00ea 0593     		str	r3, [sp, #20]
+ 563 00ec 40F2EE23 		movw	r3, #750
+ 564 00f0 0493     		str	r3, [sp, #16]
+ 565 00f2 4FF48773 		mov	r3, #270
+ 566 00f6 0393     		str	r3, [sp, #12]
+ 567 00f8 0222     		movs	r2, #2
+ 568 00fa 0292     		str	r2, [sp, #8]
+ 569 00fc 0F23     		movs	r3, #15
+ 570 00fe 0193     		str	r3, [sp, #4]
+ 571 0100 0023     		movs	r3, #0
+ 572 0102 0093     		str	r3, [sp]
+ 573 0104 0823     		movs	r3, #8
+ 574 0106 1749     		ldr	r1, .L54+4
+ 575 0108 1748     		ldr	r0, .L54+8
+ 576 010a FFF7FEFF 		bl	UICharDraw
+ 577              	.LVL9:
+ 193:modules/referee/referee_task.c ****         case CHASSIS_FOLLOW_GIMBAL_YAW:
+ 578              		.loc 1 193 13 view .LVU153
+ 579 010e 9DE7     		b	.L26
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 17
+
+
+ 580              	.L27:
+ 195:modules/referee/referee_task.c ****             break;
+ 581              		.loc 1 195 13 view .LVU154
+ 582 0110 1A4B     		ldr	r3, .L54+28
+ 583 0112 0593     		str	r3, [sp, #20]
+ 584 0114 40F2EE23 		movw	r3, #750
+ 585 0118 0493     		str	r3, [sp, #16]
+ 586 011a 4FF48773 		mov	r3, #270
+ 587 011e 0393     		str	r3, [sp, #12]
+ 588 0120 0222     		movs	r2, #2
+ 589 0122 0292     		str	r2, [sp, #8]
+ 590 0124 0F23     		movs	r3, #15
+ 591 0126 0193     		str	r3, [sp, #4]
+ 592 0128 0023     		movs	r3, #0
+ 593 012a 0093     		str	r3, [sp]
+ 594 012c 0823     		movs	r3, #8
+ 595 012e 0D49     		ldr	r1, .L54+4
+ 596 0130 0D48     		ldr	r0, .L54+8
+ 597 0132 FFF7FEFF 		bl	UICharDraw
+ 598              	.LVL10:
+ 196:modules/referee/referee_task.c ****         }
+ 599              		.loc 1 196 13 view .LVU155
+ 600 0136 89E7     		b	.L26
+ 601              	.L33:
+ 213:modules/referee/referee_task.c ****             break;
+ 602              		.loc 1 213 13 view .LVU156
+ 603 0138 114B     		ldr	r3, .L54+32
+ 604 013a 0593     		str	r3, [sp, #20]
+ 605 013c 4FF42F73 		mov	r3, #700
+ 606 0140 0493     		str	r3, [sp, #16]
+ 607 0142 4FF48773 		mov	r3, #270
+ 608 0146 0393     		str	r3, [sp, #12]
+ 609 0148 0222     		movs	r2, #2
+ 610 014a 0292     		str	r2, [sp, #8]
+ 611 014c 0F23     		movs	r3, #15
+ 612 014e 0193     		str	r3, [sp, #4]
+ 613 0150 0123     		movs	r3, #1
+ 614 0152 0093     		str	r3, [sp]
+ 615 0154 0823     		movs	r3, #8
+ 616 0156 0549     		ldr	r1, .L54+12
+ 617 0158 0548     		ldr	r0, .L54+16
+ 618 015a FFF7FEFF 		bl	UICharDraw
+ 619              	.LVL11:
+ 214:modules/referee/referee_task.c ****         }
+ 620              		.loc 1 214 13 view .LVU157
+ 621 015e 24E0     		b	.L35
+ 622              	.L55:
+ 623              		.align	2
+ 624              	.L54:
+ 625 0160 1C000000 		.word	.LC5
+ 626 0164 18000000 		.word	.LC4
+ 627 0168 00000000 		.word	UI_State_dyn
+ 628 016c 4C000000 		.word	.LC9
+ 629 0170 2D000000 		.word	UI_State_dyn+45
+ 630 0174 28000000 		.word	.LC6
+ 631 0178 34000000 		.word	.LC7
+ 632 017c 40000000 		.word	.LC8
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 18
+
+
+ 633 0180 50000000 		.word	.LC10
+ 634              	.L34:
+ 218:modules/referee/referee_task.c ****             break;
+ 635              		.loc 1 218 13 view .LVU158
+ 636 0184 B34B     		ldr	r3, .L56
+ 637 0186 0593     		str	r3, [sp, #20]
+ 638 0188 4FF42F73 		mov	r3, #700
+ 639 018c 0493     		str	r3, [sp, #16]
+ 640 018e 4FF48773 		mov	r3, #270
+ 641 0192 0393     		str	r3, [sp, #12]
+ 642 0194 0222     		movs	r2, #2
+ 643 0196 0292     		str	r2, [sp, #8]
+ 644 0198 0F23     		movs	r3, #15
+ 645 019a 0193     		str	r3, [sp, #4]
+ 646 019c 0123     		movs	r3, #1
+ 647 019e 0093     		str	r3, [sp]
+ 648 01a0 0823     		movs	r3, #8
+ 649 01a2 AD49     		ldr	r1, .L56+4
+ 650 01a4 AD48     		ldr	r0, .L56+8
+ 651 01a6 FFF7FEFF 		bl	UICharDraw
+ 652              	.LVL12:
+ 219:modules/referee/referee_task.c ****         }
+ 653              		.loc 1 219 13 view .LVU159
+ 654              	.L35:
+ 222:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.gimbal_flag = 0;
+ 655              		.loc 1 222 9 view .LVU160
+ 656 01aa AD4B     		ldr	r3, .L56+12
+ 657 01ac D3F82DA0 		ldr	r10, [r3, #45]	@ unaligned
+ 658 01b0 D3F83190 		ldr	r9, [r3, #49]	@ unaligned
+ 659 01b4 D3F83580 		ldr	r8, [r3, #53]	@ unaligned
+ 660 01b8 03F1390C 		add	ip, r3, #57
+ 661 01bc 6F46     		mov	r7, sp
+ 662 01be 03F1590E 		add	lr, r3, #89
+ 663              	.L36:
+ 664 01c2 3E46     		mov	r6, r7
+ 665 01c4 DCF80000 		ldr	r0, [ip]	@ unaligned
+ 666 01c8 DCF80410 		ldr	r1, [ip, #4]	@ unaligned
+ 667 01cc DCF80820 		ldr	r2, [ip, #8]	@ unaligned
+ 668 01d0 DCF80C30 		ldr	r3, [ip, #12]	@ unaligned
+ 669 01d4 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 670 01d6 0CF1100C 		add	ip, ip, #16
+ 671 01da 3746     		mov	r7, r6
+ 672 01dc F445     		cmp	ip, lr
+ 673 01de F0D1     		bne	.L36
+ 674 01e0 9CF80030 		ldrb	r3, [ip]	@ zero_extendqisi2
+ 675 01e4 3370     		strb	r3, [r6]
+ 676 01e6 5146     		mov	r1, r10
+ 677 01e8 4A46     		mov	r2, r9
+ 678 01ea 4346     		mov	r3, r8
+ 679 01ec 2846     		mov	r0, r5
+ 680 01ee FFF7FEFF 		bl	UICharRefresh
+ 681              	.LVL13:
+ 223:modules/referee/referee_task.c ****     }
+ 682              		.loc 1 223 9 view .LVU161
+ 223:modules/referee/referee_task.c ****     }
+ 683              		.loc 1 223 65 is_stmt 0 view .LVU162
+ 684 01f2 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 19
+
+
+ 685 01f4 23F00203 		bic	r3, r3, #2
+ 686 01f8 2370     		strb	r3, [r4]
+ 687              	.L32:
+ 226:modules/referee/referee_task.c ****     {
+ 688              		.loc 1 226 5 is_stmt 1 view .LVU163
+ 226:modules/referee/referee_task.c ****     {
+ 689              		.loc 1 226 64 is_stmt 0 view .LVU164
+ 690 01fa 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 226:modules/referee/referee_task.c ****     {
+ 691              		.loc 1 226 8 view .LVU165
+ 692 01fc 13F0040F 		tst	r3, #4
+ 693 0200 40D0     		beq	.L37
+ 228:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 694              		.loc 1 228 9 is_stmt 1 view .LVU166
+ 228:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 695              		.loc 1 228 114 is_stmt 0 view .LVU167
+ 696 0202 E378     		ldrb	r3, [r4, #3]	@ zero_extendqisi2
+ 228:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 697              		.loc 1 228 9 view .LVU168
+ 698 0204 012B     		cmp	r3, #1
+ 699 0206 00F0BB80 		beq	.L51
+ 228:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 700              		.loc 1 228 9 discriminator 2 view .LVU169
+ 701 020a 964B     		ldr	r3, .L56+16
+ 702              	.L38:
+ 228:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 703              		.loc 1 228 9 discriminator 4 view .LVU170
+ 704 020c 964E     		ldr	r6, .L56+20
+ 705 020e 0593     		str	r3, [sp, #20]
+ 706 0210 40F28A23 		movw	r3, #650
+ 707 0214 0493     		str	r3, [sp, #16]
+ 708 0216 4FF48773 		mov	r3, #270
+ 709 021a 0393     		str	r3, [sp, #12]
+ 710 021c 0222     		movs	r2, #2
+ 711 021e 0292     		str	r2, [sp, #8]
+ 712 0220 0F23     		movs	r3, #15
+ 713 0222 0193     		str	r3, [sp, #4]
+ 714 0224 0523     		movs	r3, #5
+ 715 0226 0093     		str	r3, [sp]
+ 716 0228 0823     		movs	r3, #8
+ 717 022a 9049     		ldr	r1, .L56+24
+ 718 022c 3046     		mov	r0, r6
+ 719 022e FFF7FEFF 		bl	UICharDraw
+ 720              	.LVL14:
+ 229:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.shoot_flag = 0;
+ 721              		.loc 1 229 9 is_stmt 1 view .LVU171
+ 722 0232 3346     		mov	r3, r6
+ 723 0234 53F85A99 		ldr	r9, [r3], #-90	@ unaligned
+ 724 0238 D3F85E80 		ldr	r8, [r3, #94]	@ unaligned
+ 725 023c D3F862A0 		ldr	r10, [r3, #98]	@ unaligned
+ 726 0240 06F10C0C 		add	ip, r6, #12
+ 727 0244 6F46     		mov	r7, sp
+ 728 0246 2C36     		adds	r6, r6, #44
+ 729              	.L39:
+ 730 0248 BE46     		mov	lr, r7
+ 731 024a DCF80000 		ldr	r0, [ip]	@ unaligned
+ 732 024e DCF80410 		ldr	r1, [ip, #4]	@ unaligned
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 20
+
+
+ 733 0252 DCF80820 		ldr	r2, [ip, #8]	@ unaligned
+ 734 0256 DCF80C30 		ldr	r3, [ip, #12]	@ unaligned
+ 735 025a AEE80F00 		stmia	lr!, {r0, r1, r2, r3}
+ 736 025e 0CF1100C 		add	ip, ip, #16
+ 737 0262 7746     		mov	r7, lr
+ 738 0264 B445     		cmp	ip, r6
+ 739 0266 EFD1     		bne	.L39
+ 740 0268 9CF80030 		ldrb	r3, [ip]	@ zero_extendqisi2
+ 741 026c 8EF80030 		strb	r3, [lr]
+ 742 0270 4946     		mov	r1, r9
+ 743 0272 4246     		mov	r2, r8
+ 744 0274 5346     		mov	r3, r10
+ 745 0276 2846     		mov	r0, r5
+ 746 0278 FFF7FEFF 		bl	UICharRefresh
+ 747              	.LVL15:
+ 230:modules/referee/referee_task.c ****     }
+ 748              		.loc 1 230 9 view .LVU172
+ 230:modules/referee/referee_task.c ****     }
+ 749              		.loc 1 230 64 is_stmt 0 view .LVU173
+ 750 027c 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 751 027e 23F00403 		bic	r3, r3, #4
+ 752 0282 2370     		strb	r3, [r4]
+ 753              	.L37:
+ 233:modules/referee/referee_task.c ****     {
+ 754              		.loc 1 233 5 is_stmt 1 view .LVU174
+ 233:modules/referee/referee_task.c ****     {
+ 755              		.loc 1 233 67 is_stmt 0 view .LVU175
+ 756 0284 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 233:modules/referee/referee_task.c ****     {
+ 757              		.loc 1 233 8 view .LVU176
+ 758 0286 13F0100F 		tst	r3, #16
+ 759 028a 3FD0     		beq	.L40
+ 235:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 760              		.loc 1 235 9 is_stmt 1 view .LVU177
+ 235:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 761              		.loc 1 235 114 is_stmt 0 view .LVU178
+ 762 028c 2379     		ldrb	r3, [r4, #4]	@ zero_extendqisi2
+ 235:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 763              		.loc 1 235 9 view .LVU179
+ 764 028e 012B     		cmp	r3, #1
+ 765 0290 78D0     		beq	.L52
+ 235:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 766              		.loc 1 235 9 discriminator 2 view .LVU180
+ 767 0292 744B     		ldr	r3, .L56+16
+ 768              	.L41:
+ 235:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 769              		.loc 1 235 9 discriminator 4 view .LVU181
+ 770 0294 764E     		ldr	r6, .L56+28
+ 771 0296 0593     		str	r3, [sp, #20]
+ 772 0298 4FF41673 		mov	r3, #600
+ 773 029c 0493     		str	r3, [sp, #16]
+ 774 029e 4FF48773 		mov	r3, #270
+ 775 02a2 0393     		str	r3, [sp, #12]
+ 776 02a4 0222     		movs	r2, #2
+ 777 02a6 0292     		str	r2, [sp, #8]
+ 778 02a8 0F23     		movs	r3, #15
+ 779 02aa 0193     		str	r3, [sp, #4]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 21
+
+
+ 780 02ac 0523     		movs	r3, #5
+ 781 02ae 0093     		str	r3, [sp]
+ 782 02b0 0823     		movs	r3, #8
+ 783 02b2 7049     		ldr	r1, .L56+32
+ 784 02b4 3046     		mov	r0, r6
+ 785 02b6 FFF7FEFF 		bl	UICharDraw
+ 786              	.LVL16:
+ 236:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.friction_flag = 0;
+ 787              		.loc 1 236 9 is_stmt 1 view .LVU182
+ 788 02ba 3346     		mov	r3, r6
+ 789 02bc 53F88799 		ldr	r9, [r3], #-135	@ unaligned
+ 790 02c0 D3F88B80 		ldr	r8, [r3, #139]	@ unaligned
+ 791 02c4 D3F88FA0 		ldr	r10, [r3, #143]	@ unaligned
+ 792 02c8 06F10C0C 		add	ip, r6, #12
+ 793 02cc 6F46     		mov	r7, sp
+ 794 02ce 2C36     		adds	r6, r6, #44
+ 795              	.L42:
+ 796 02d0 BE46     		mov	lr, r7
+ 797 02d2 DCF80000 		ldr	r0, [ip]	@ unaligned
+ 798 02d6 DCF80410 		ldr	r1, [ip, #4]	@ unaligned
+ 799 02da DCF80820 		ldr	r2, [ip, #8]	@ unaligned
+ 800 02de DCF80C30 		ldr	r3, [ip, #12]	@ unaligned
+ 801 02e2 AEE80F00 		stmia	lr!, {r0, r1, r2, r3}
+ 802 02e6 0CF1100C 		add	ip, ip, #16
+ 803 02ea 7746     		mov	r7, lr
+ 804 02ec B445     		cmp	ip, r6
+ 805 02ee EFD1     		bne	.L42
+ 806 02f0 9CF80030 		ldrb	r3, [ip]	@ zero_extendqisi2
+ 807 02f4 8EF80030 		strb	r3, [lr]
+ 808 02f8 4946     		mov	r1, r9
+ 809 02fa 4246     		mov	r2, r8
+ 810 02fc 5346     		mov	r3, r10
+ 811 02fe 2846     		mov	r0, r5
+ 812 0300 FFF7FEFF 		bl	UICharRefresh
+ 813              	.LVL17:
+ 237:modules/referee/referee_task.c ****     }
+ 814              		.loc 1 237 9 view .LVU183
+ 237:modules/referee/referee_task.c ****     }
+ 815              		.loc 1 237 67 is_stmt 0 view .LVU184
+ 816 0304 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 817 0306 23F01003 		bic	r3, r3, #16
+ 818 030a 2370     		strb	r3, [r4]
+ 819              	.L40:
+ 240:modules/referee/referee_task.c ****     {
+ 820              		.loc 1 240 5 is_stmt 1 view .LVU185
+ 240:modules/referee/referee_task.c ****     {
+ 821              		.loc 1 240 62 is_stmt 0 view .LVU186
+ 822 030c 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 240:modules/referee/referee_task.c ****     {
+ 823              		.loc 1 240 8 view .LVU187
+ 824 030e 13F0080F 		tst	r3, #8
+ 825 0312 2ED0     		beq	.L43
+ 242:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 826              		.loc 1 242 9 is_stmt 1 view .LVU188
+ 242:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 827              		.loc 1 242 114 is_stmt 0 view .LVU189
+ 828 0314 6379     		ldrb	r3, [r4, #5]	@ zero_extendqisi2
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 22
+
+
+ 242:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 829              		.loc 1 242 9 view .LVU190
+ 830 0316 002B     		cmp	r3, #0
+ 831 0318 36D1     		bne	.L48
+ 242:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 832              		.loc 1 242 9 discriminator 1 view .LVU191
+ 833 031a 574B     		ldr	r3, .L56+36
+ 834              	.L44:
+ 242:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 835              		.loc 1 242 9 discriminator 4 view .LVU192
+ 836 031c 574E     		ldr	r6, .L56+40
+ 837 031e 0593     		str	r3, [sp, #20]
+ 838 0320 40F22623 		movw	r3, #550
+ 839 0324 0493     		str	r3, [sp, #16]
+ 840 0326 4FF48773 		mov	r3, #270
+ 841 032a 0393     		str	r3, [sp, #12]
+ 842 032c 0222     		movs	r2, #2
+ 843 032e 0292     		str	r2, [sp, #8]
+ 844 0330 0F23     		movs	r3, #15
+ 845 0332 0193     		str	r3, [sp, #4]
+ 846 0334 0523     		movs	r3, #5
+ 847 0336 0093     		str	r3, [sp]
+ 848 0338 0823     		movs	r3, #8
+ 849 033a 5149     		ldr	r1, .L56+44
+ 850 033c 3046     		mov	r0, r6
+ 851 033e FFF7FEFF 		bl	UICharDraw
+ 852              	.LVL18:
+ 243:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.lid_flag = 0;
+ 853              		.loc 1 243 9 is_stmt 1 view .LVU193
+ 854 0342 EC46     		mov	ip, sp
+ 855 0344 06F10C0E 		add	lr, r6, #12
+ 856 0348 BEE80F00 		ldmia	lr!, {r0, r1, r2, r3}
+ 857 034c ACE80F00 		stmia	ip!, {r0, r1, r2, r3}
+ 858 0350 BEE80F00 		ldmia	lr!, {r0, r1, r2, r3}
+ 859 0354 ACE80F00 		stmia	ip!, {r0, r1, r2, r3}
+ 860 0358 DEF80030 		ldr	r3, [lr]
+ 861 035c 8CF80030 		strb	r3, [ip]
+ 862 0360 96E80E00 		ldm	r6, {r1, r2, r3}
+ 863 0364 2846     		mov	r0, r5
+ 864 0366 FFF7FEFF 		bl	UICharRefresh
+ 865              	.LVL19:
+ 244:modules/referee/referee_task.c ****     }
+ 866              		.loc 1 244 9 view .LVU194
+ 244:modules/referee/referee_task.c ****     }
+ 867              		.loc 1 244 62 is_stmt 0 view .LVU195
+ 868 036a 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 869 036c 23F00803 		bic	r3, r3, #8
+ 870 0370 2370     		strb	r3, [r4]
+ 871              	.L43:
+ 247:modules/referee/referee_task.c ****     {
+ 872              		.loc 1 247 5 is_stmt 1 view .LVU196
+ 247:modules/referee/referee_task.c ****     {
+ 873              		.loc 1 247 64 is_stmt 0 view .LVU197
+ 874 0372 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 247:modules/referee/referee_task.c ****     {
+ 875              		.loc 1 247 8 view .LVU198
+ 876 0374 13F0200F 		tst	r3, #32
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 23
+
+
+ 877 0378 08D1     		bne	.L53
+ 878              	.L24:
+ 254:modules/referee/referee_task.c **** 
+ 879              		.loc 1 254 1 view .LVU199
+ 880 037a 0AB0     		add	sp, sp, #40
+ 881              	.LCFI2:
+ 882              		.cfi_remember_state
+ 883              		.cfi_def_cfa_offset 32
+ 884              		@ sp needed
+ 885 037c BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 886              	.LVL20:
+ 887              	.L51:
+ 888              	.LCFI3:
+ 889              		.cfi_restore_state
+ 228:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 890              		.loc 1 228 9 discriminator 1 view .LVU200
+ 891 0380 404B     		ldr	r3, .L56+48
+ 892 0382 43E7     		b	.L38
+ 893              	.L52:
+ 235:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 894              		.loc 1 235 9 discriminator 1 view .LVU201
+ 895 0384 3F4B     		ldr	r3, .L56+48
+ 896 0386 85E7     		b	.L41
+ 897              	.L48:
+ 242:modules/referee/referee_task.c ****         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 898              		.loc 1 242 9 discriminator 2 view .LVU202
+ 899 0388 3F4B     		ldr	r3, .L56+52
+ 900 038a C7E7     		b	.L44
+ 901              	.L53:
+ 249:modules/referee/referee_task.c ****         UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 720, 160, (uint32_t
+ 902              		.loc 1 249 9 is_stmt 1 view .LVU203
+ 249:modules/referee/referee_task.c ****         UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 720, 160, (uint32_t
+ 903              		.loc 1 249 136 is_stmt 0 view .LVU204
+ 904 038c D4F80630 		ldr	r3, [r4, #6]	@ unaligned
+ 905 0390 07EE903A 		vmov	s15, r3	@ int
+ 249:modules/referee/referee_task.c ****         UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 720, 160, (uint32_t
+ 906              		.loc 1 249 154 view .LVU205
+ 907 0394 9FED3D7A 		vldr.32	s14, .L56+56
+ 908 0398 67EE877A 		vmul.f32	s15, s15, s14
+ 249:modules/referee/referee_task.c ****         UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 720, 160, (uint32_t
+ 909              		.loc 1 249 9 view .LVU206
+ 910 039c 3C4E     		ldr	r6, .L56+60
+ 911 039e FDEEE77A 		vcvt.s32.f32	s15, s15
+ 912 03a2 CDED067A 		vstr.32	s15, [sp, #24]	@ int
+ 913 03a6 E623     		movs	r3, #230
+ 914 03a8 0593     		str	r3, [sp, #20]
+ 915 03aa 40F2EE23 		movw	r3, #750
+ 916 03ae 0493     		str	r3, [sp, #16]
+ 917 03b0 0227     		movs	r7, #2
+ 918 03b2 0397     		str	r7, [sp, #12]
+ 919 03b4 0297     		str	r7, [sp, #8]
+ 920 03b6 1223     		movs	r3, #18
+ 921 03b8 0193     		str	r3, [sp, #4]
+ 922 03ba 0097     		str	r7, [sp]
+ 923 03bc 0823     		movs	r3, #8
+ 924 03be 3A46     		mov	r2, r7
+ 925 03c0 3449     		ldr	r1, .L56+64
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 24
+
+
+ 926 03c2 3046     		mov	r0, r6
+ 927 03c4 FFF7FEFF 		bl	UIFloatDraw
+ 928              	.LVL21:
+ 250:modules/referee/referee_task.c ****         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 929              		.loc 1 250 9 is_stmt 1 view .LVU207
+ 250:modules/referee/referee_task.c ****         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 930              		.loc 1 250 144 is_stmt 0 view .LVU208
+ 931 03c8 D4F80630 		ldr	r3, [r4, #6]	@ unaligned
+ 932 03cc 07EE903A 		vmov	s15, r3	@ int
+ 250:modules/referee/referee_task.c ****         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 933              		.loc 1 250 162 view .LVU209
+ 934 03d0 B3EE0E7A 		vmov.f32	s14, #3.0e+1
+ 935 03d4 67EE877A 		vmul.f32	s15, s15, s14
+ 250:modules/referee/referee_task.c ****         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 936              		.loc 1 250 105 view .LVU210
+ 937 03d8 9FED2F7A 		vldr.32	s14, .L56+68
+ 938 03dc 77EE877A 		vadd.f32	s15, s15, s14
+ 250:modules/referee/referee_task.c ****         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 939              		.loc 1 250 9 view .LVU211
+ 940 03e0 06F10F08 		add	r8, r6, #15
+ 941 03e4 A023     		movs	r3, #160
+ 942 03e6 0593     		str	r3, [sp, #20]
+ 943 03e8 FCEEE77A 		vcvt.u32.f32	s15, s15
+ 944 03ec CDED047A 		vstr.32	s15, [sp, #16]	@ int
+ 945 03f0 0393     		str	r3, [sp, #12]
+ 946 03f2 4FF43473 		mov	r3, #720
+ 947 03f6 0293     		str	r3, [sp, #8]
+ 948 03f8 1E23     		movs	r3, #30
+ 949 03fa 0193     		str	r3, [sp, #4]
+ 950 03fc 0523     		movs	r3, #5
+ 951 03fe 0093     		str	r3, [sp]
+ 952 0400 0823     		movs	r3, #8
+ 953 0402 3A46     		mov	r2, r7
+ 954 0404 2549     		ldr	r1, .L56+72
+ 955 0406 4046     		mov	r0, r8
+ 956 0408 FFF7FEFF 		bl	UILineDraw
+ 957              	.LVL22:
+ 251:modules/referee/referee_task.c ****         _Interactive_data->Referee_Interactive_Flag.Power_flag = 0;
+ 958              		.loc 1 251 9 is_stmt 1 view .LVU212
+ 959 040c B446     		mov	ip, r6
+ 960 040e 02AB     		add	r3, sp, #8
+ 961 0410 D6F80F00 		ldr	r0, [r6, #15]	@ unaligned
+ 962 0414 D6F81310 		ldr	r1, [r6, #19]	@ unaligned
+ 963 0418 D6F81720 		ldr	r2, [r6, #23]	@ unaligned
+ 964 041c 07C3     		stmia	r3!, {r0, r1, r2}
+ 965 041e B6F81B10 		ldrh	r1, [r6, #27]	@ unaligned
+ 966 0422 727F     		ldrb	r2, [r6, #29]	@ zero_extendqisi2
+ 967 0424 1980     		strh	r1, [r3]	@ unaligned
+ 968 0426 9A70     		strb	r2, [r3, #2]
+ 969 0428 5CF80F29 		ldr	r2, [ip], #-15	@ unaligned
+ 970 042c B068     		ldr	r0, [r6, #8]	@ unaligned
+ 971 042e 0090     		str	r0, [sp]
+ 972 0430 B189     		ldrh	r1, [r6, #12]	@ unaligned
+ 973 0432 B37B     		ldrb	r3, [r6, #14]	@ zero_extendqisi2
+ 974 0434 ADF80410 		strh	r1, [sp, #4]	@ unaligned
+ 975 0438 8DF80630 		strb	r3, [sp, #6]
+ 976 043c DCF81330 		ldr	r3, [ip, #19]	@ unaligned
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 25
+
+
+ 977 0440 3946     		mov	r1, r7
+ 978 0442 2846     		mov	r0, r5
+ 979 0444 FFF7FEFF 		bl	UIGraphRefresh
+ 980              	.LVL23:
+ 252:modules/referee/referee_task.c ****     }
+ 981              		.loc 1 252 9 view .LVU213
+ 252:modules/referee/referee_task.c ****     }
+ 982              		.loc 1 252 64 is_stmt 0 view .LVU214
+ 983 0448 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 984 044a 23F02003 		bic	r3, r3, #32
+ 985 044e 2370     		strb	r3, [r4]
+ 254:modules/referee/referee_task.c **** 
+ 986              		.loc 1 254 1 view .LVU215
+ 987 0450 93E7     		b	.L24
+ 988              	.L57:
+ 989 0452 00BF     		.align	2
+ 990              	.L56:
+ 991 0454 5C000000 		.word	.LC11
+ 992 0458 4C000000 		.word	.LC9
+ 993 045c 2D000000 		.word	UI_State_dyn+45
+ 994 0460 00000000 		.word	UI_State_dyn
+ 995 0464 04000000 		.word	.LC1
+ 996 0468 5A000000 		.word	UI_State_dyn+90
+ 997 046c 68000000 		.word	.LC12
+ 998 0470 87000000 		.word	UI_State_dyn+135
+ 999 0474 6C000000 		.word	.LC13
+ 1000 0478 08000000 		.word	.LC2
+ 1001 047c B4000000 		.word	UI_State_dyn+180
+ 1002 0480 70000000 		.word	.LC14
+ 1003 0484 00000000 		.word	.LC0
+ 1004 0488 10000000 		.word	.LC3
+ 1005 048c 00007A44 		.word	1148846080
+ 1006 0490 0F000000 		.word	UI_Energy+15
+ 1007 0494 74000000 		.word	.LC15
+ 1008 0498 00803B44 		.word	1144750080
+ 1009 049c 78000000 		.word	.LC16
+ 1010              		.cfi_endproc
+ 1011              	.LFE281:
+ 1013              		.section	.text.UITaskInit,"ax",%progbits
+ 1014              		.align	1
+ 1015              		.global	UITaskInit
+ 1016              		.syntax unified
+ 1017              		.thumb
+ 1018              		.thumb_func
+ 1020              	UITaskInit:
+ 1021              	.LVL24:
+ 1022              	.LFB277:
+  43:modules/referee/referee_task.c ****     referee_recv_info = RefereeInit(referee_usart_handle); // 初始化裁判系统的串口,并返
+ 1023              		.loc 1 43 1 is_stmt 1 view -0
+ 1024              		.cfi_startproc
+ 1025              		@ args = 0, pretend = 0, frame = 0
+ 1026              		@ frame_needed = 0, uses_anonymous_args = 0
+  43:modules/referee/referee_task.c ****     referee_recv_info = RefereeInit(referee_usart_handle); // 初始化裁判系统的串口,并返
+ 1027              		.loc 1 43 1 is_stmt 0 view .LVU217
+ 1028 0000 10B5     		push	{r4, lr}
+ 1029              	.LCFI4:
+ 1030              		.cfi_def_cfa_offset 8
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 26
+
+
+ 1031              		.cfi_offset 4, -8
+ 1032              		.cfi_offset 14, -4
+ 1033 0002 0C46     		mov	r4, r1
+  44:modules/referee/referee_task.c ****     Interactive_data = UI_data;                            // 获取UI绘制需要的机器人状�
+ 1034              		.loc 1 44 5 is_stmt 1 view .LVU218
+  44:modules/referee/referee_task.c ****     Interactive_data = UI_data;                            // 获取UI绘制需要的机器人状�
+ 1035              		.loc 1 44 25 is_stmt 0 view .LVU219
+ 1036 0004 FFF7FEFF 		bl	RefereeInit
+ 1037              	.LVL25:
+  44:modules/referee/referee_task.c ****     Interactive_data = UI_data;                            // 获取UI绘制需要的机器人状�
+ 1038              		.loc 1 44 23 discriminator 1 view .LVU220
+ 1039 0008 034A     		ldr	r2, .L60
+ 1040 000a 1060     		str	r0, [r2]
+  45:modules/referee/referee_task.c ****     referee_recv_info->init_flag = 1;
+ 1041              		.loc 1 45 5 is_stmt 1 view .LVU221
+  45:modules/referee/referee_task.c ****     referee_recv_info->init_flag = 1;
+ 1042              		.loc 1 45 22 is_stmt 0 view .LVU222
+ 1043 000c 034A     		ldr	r2, .L60+4
+ 1044 000e 1460     		str	r4, [r2]
+  46:modules/referee/referee_task.c ****     return referee_recv_info;
+ 1045              		.loc 1 46 5 is_stmt 1 view .LVU223
+  46:modules/referee/referee_task.c ****     return referee_recv_info;
+ 1046              		.loc 1 46 34 is_stmt 0 view .LVU224
+ 1047 0010 0122     		movs	r2, #1
+ 1048 0012 80F88A20 		strb	r2, [r0, #138]
+  47:modules/referee/referee_task.c **** }
+ 1049              		.loc 1 47 5 is_stmt 1 view .LVU225
+  48:modules/referee/referee_task.c **** 
+ 1050              		.loc 1 48 1 is_stmt 0 view .LVU226
+ 1051 0016 10BD     		pop	{r4, pc}
+ 1052              	.LVL26:
+ 1053              	.L61:
+  48:modules/referee/referee_task.c **** 
+ 1054              		.loc 1 48 1 view .LVU227
+ 1055              		.align	2
+ 1056              	.L60:
+ 1057 0018 00000000 		.word	referee_recv_info
+ 1058 001c 00000000 		.word	Interactive_data
+ 1059              		.cfi_endproc
+ 1060              	.LFE277:
+ 1062              		.section	.text.UITask,"ax",%progbits
+ 1063              		.align	1
+ 1064              		.global	UITask
+ 1065              		.syntax unified
+ 1066              		.thumb
+ 1067              		.thumb_func
+ 1069              	UITask:
+ 1070              	.LFB278:
+  51:modules/referee/referee_task.c ****     RobotModeTest(Interactive_data); // 测试用函数，实现模式自动变化,用于检查该�
+ 1071              		.loc 1 51 1 is_stmt 1 view -0
+ 1072              		.cfi_startproc
+ 1073              		@ args = 0, pretend = 0, frame = 0
+ 1074              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1075 0000 10B5     		push	{r4, lr}
+ 1076              	.LCFI5:
+ 1077              		.cfi_def_cfa_offset 8
+ 1078              		.cfi_offset 4, -8
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 27
+
+
+ 1079              		.cfi_offset 14, -4
+  52:modules/referee/referee_task.c ****     MyUIRefresh(referee_recv_info, Interactive_data);
+ 1080              		.loc 1 52 5 view .LVU229
+ 1081 0002 054C     		ldr	r4, .L64
+ 1082 0004 2068     		ldr	r0, [r4]
+ 1083 0006 FFF7FEFF 		bl	RobotModeTest
+ 1084              	.LVL27:
+  53:modules/referee/referee_task.c **** }
+ 1085              		.loc 1 53 5 view .LVU230
+ 1086 000a 2168     		ldr	r1, [r4]
+ 1087 000c 034B     		ldr	r3, .L64+4
+ 1088 000e 1868     		ldr	r0, [r3]
+ 1089 0010 FFF7FEFF 		bl	MyUIRefresh
+ 1090              	.LVL28:
+  54:modules/referee/referee_task.c **** 
+ 1091              		.loc 1 54 1 is_stmt 0 view .LVU231
+ 1092 0014 10BD     		pop	{r4, pc}
+ 1093              	.L65:
+ 1094 0016 00BF     		.align	2
+ 1095              	.L64:
+ 1096 0018 00000000 		.word	Interactive_data
+ 1097 001c 00000000 		.word	referee_recv_info
+ 1098              		.cfi_endproc
+ 1099              	.LFE278:
+ 1101              		.section	.rodata.MyUIInit.str1.4,"aMS",%progbits,1
+ 1102              		.align	2
+ 1103              	.LC17:
+ 1104 0000 736C3000 		.ascii	"sl0\000"
+ 1105              		.align	2
+ 1106              	.LC18:
+ 1107 0004 736C3100 		.ascii	"sl1\000"
+ 1108              		.align	2
+ 1109              	.LC19:
+ 1110 0008 736C3200 		.ascii	"sl2\000"
+ 1111              		.align	2
+ 1112              	.LC20:
+ 1113 000c 736C3300 		.ascii	"sl3\000"
+ 1114              		.align	2
+ 1115              	.LC21:
+ 1116 0010 736C3400 		.ascii	"sl4\000"
+ 1117              		.align	2
+ 1118              	.LC22:
+ 1119 0014 73733000 		.ascii	"ss0\000"
+ 1120              		.align	2
+ 1121              	.LC23:
+ 1122 0018 63686173 		.ascii	"chassis:\000"
+ 1122      7369733A 
+ 1122      00
+ 1123 0021 000000   		.align	2
+ 1124              	.LC24:
+ 1125 0024 73733100 		.ascii	"ss1\000"
+ 1126              		.align	2
+ 1127              	.LC25:
+ 1128 0028 67696D62 		.ascii	"gimbal:\000"
+ 1128      616C3A00 
+ 1129              		.align	2
+ 1130              	.LC26:
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 28
+
+
+ 1131 0030 73733200 		.ascii	"ss2\000"
+ 1132              		.align	2
+ 1133              	.LC27:
+ 1134 0034 73686F6F 		.ascii	"shoot:\000"
+ 1134      743A00
+ 1135 003b 00       		.align	2
+ 1136              	.LC28:
+ 1137 003c 73733300 		.ascii	"ss3\000"
+ 1138              		.align	2
+ 1139              	.LC29:
+ 1140 0040 66726963 		.ascii	"frict:\000"
+ 1140      743A00
+ 1141 0047 00       		.align	2
+ 1142              	.LC30:
+ 1143 0048 73733400 		.ascii	"ss4\000"
+ 1144              		.align	2
+ 1145              	.LC31:
+ 1146 004c 6C69643A 		.ascii	"lid:\000"
+ 1146      00
+ 1147 0051 000000   		.align	2
+ 1148              	.LC32:
+ 1149 0054 73733500 		.ascii	"ss5\000"
+ 1150              		.align	2
+ 1151              	.LC33:
+ 1152 0058 506F7765 		.ascii	"Power:\000"
+ 1152      723A00
+ 1153 005f 00       		.align	2
+ 1154              	.LC34:
+ 1155 0060 73733600 		.ascii	"ss6\000"
+ 1156              		.section	.text.MyUIInit,"ax",%progbits
+ 1157              		.align	1
+ 1158              		.global	MyUIInit
+ 1159              		.syntax unified
+ 1160              		.thumb
+ 1161              		.thumb_func
+ 1163              	MyUIInit:
+ 1164              	.LFB279:
+  63:modules/referee/referee_task.c ****     if (!referee_recv_info->init_flag)
+ 1165              		.loc 1 63 1 is_stmt 1 view -0
+ 1166              		.cfi_startproc
+ 1167              		@ args = 0, pretend = 0, frame = 0
+ 1168              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1169 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 1170              	.LCFI6:
+ 1171              		.cfi_def_cfa_offset 36
+ 1172              		.cfi_offset 4, -36
+ 1173              		.cfi_offset 5, -32
+ 1174              		.cfi_offset 6, -28
+ 1175              		.cfi_offset 7, -24
+ 1176              		.cfi_offset 8, -20
+ 1177              		.cfi_offset 9, -16
+ 1178              		.cfi_offset 10, -12
+ 1179              		.cfi_offset 11, -8
+ 1180              		.cfi_offset 14, -4
+ 1181 0004 93B0     		sub	sp, sp, #76
+ 1182              	.LCFI7:
+ 1183              		.cfi_def_cfa_offset 112
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 29
+
+
+  64:modules/referee/referee_task.c ****         vTaskDelete(NULL); // 如果没有初始化裁判系统则直接删除ui任务
+ 1184              		.loc 1 64 5 view .LVU233
+  64:modules/referee/referee_task.c ****         vTaskDelete(NULL); // 如果没有初始化裁判系统则直接删除ui任务
+ 1185              		.loc 1 64 27 is_stmt 0 view .LVU234
+ 1186 0006 044B     		ldr	r3, .L78
+ 1187 0008 1B68     		ldr	r3, [r3]
+ 1188 000a 93F88A30 		ldrb	r3, [r3, #138]	@ zero_extendqisi2
+  64:modules/referee/referee_task.c ****         vTaskDelete(NULL); // 如果没有初始化裁判系统则直接删除ui任务
+ 1189              		.loc 1 64 8 view .LVU235
+ 1190 000e 43B9     		cbnz	r3, .L68
+  65:modules/referee/referee_task.c ****     while (referee_recv_info->GameRobotState.robot_id == 0)
+ 1191              		.loc 1 65 9 is_stmt 1 view .LVU236
+ 1192 0010 0020     		movs	r0, #0
+ 1193 0012 FFF7FEFF 		bl	vTaskDelete
+ 1194              	.LVL29:
+ 1195 0016 04E0     		b	.L68
+ 1196              	.L79:
+ 1197              		.align	2
+ 1198              	.L78:
+ 1199 0018 00000000 		.word	referee_recv_info
+ 1200              	.L69:
+  67:modules/referee/referee_task.c **** 
+ 1201              		.loc 1 67 9 view .LVU237
+ 1202 001c 6420     		movs	r0, #100
+ 1203 001e FFF7FEFF 		bl	osDelay
+ 1204              	.LVL30:
+ 1205              	.L68:
+  66:modules/referee/referee_task.c ****         osDelay(100); // 若还未收到裁判系统数据,等待一段时间后再检查
+ 1206              		.loc 1 66 55 view .LVU238
+  66:modules/referee/referee_task.c ****         osDelay(100); // 若还未收到裁判系统数据,等待一段时间后再检查
+ 1207              		.loc 1 66 29 is_stmt 0 view .LVU239
+ 1208 0022 CC4B     		ldr	r3, .L80
+ 1209 0024 1B68     		ldr	r3, [r3]
+  66:modules/referee/referee_task.c ****         osDelay(100); // 若还未收到裁判系统数据,等待一段时间后再检查
+ 1210              		.loc 1 66 45 view .LVU240
+ 1211 0026 93F84230 		ldrb	r3, [r3, #66]	@ zero_extendqisi2
+  66:modules/referee/referee_task.c ****         osDelay(100); // 若还未收到裁判系统数据,等待一段时间后再检查
+ 1212              		.loc 1 66 55 view .LVU241
+ 1213 002a 002B     		cmp	r3, #0
+ 1214 002c F6D0     		beq	.L69
+  69:modules/referee/referee_task.c ****     UIDelete(&referee_recv_info->referee_id, UI_Data_Del_ALL, 0); // 清空UI
+ 1215              		.loc 1 69 5 is_stmt 1 view .LVU242
+ 1216 002e FFF7FEFF 		bl	DeterminRobotID
+ 1217              	.LVL31:
+  70:modules/referee/referee_task.c **** 
+ 1218              		.loc 1 70 5 view .LVU243
+  70:modules/referee/referee_task.c **** 
+ 1219              		.loc 1 70 32 is_stmt 0 view .LVU244
+ 1220 0032 DFF820A3 		ldr	r10, .L80
+  70:modules/referee/referee_task.c **** 
+ 1221              		.loc 1 70 5 view .LVU245
+ 1222 0036 0022     		movs	r2, #0
+ 1223 0038 0221     		movs	r1, #2
+ 1224 003a DAF80000 		ldr	r0, [r10]
+ 1225 003e FFF7FEFF 		bl	UIDelete
+ 1226              	.LVL32:
+  73:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[1], "sl1", UI_Graph_ADD, 7, UI_Color_White, 3, shoot_line_location[1]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 30
+
+
+ 1227              		.loc 1 73 5 is_stmt 1 view .LVU246
+ 1228 0042 C54C     		ldr	r4, .L80+4
+ 1229 0044 4FF40773 		mov	r3, #540
+ 1230 0048 0593     		str	r3, [sp, #20]
+ 1231 004a 40F2BA42 		movw	r2, #1210
+ 1232 004e 0492     		str	r2, [sp, #16]
+ 1233 0050 0393     		str	r3, [sp, #12]
+ 1234 0052 40F2C623 		movw	r3, #710
+ 1235 0056 0293     		str	r3, [sp, #8]
+ 1236 0058 0325     		movs	r5, #3
+ 1237 005a 0195     		str	r5, [sp, #4]
+ 1238 005c 4FF0080B 		mov	fp, #8
+ 1239 0060 CDF800B0 		str	fp, [sp]
+ 1240 0064 0723     		movs	r3, #7
+ 1241 0066 0122     		movs	r2, #1
+ 1242 0068 BC49     		ldr	r1, .L80+8
+ 1243 006a 2046     		mov	r0, r4
+ 1244 006c FFF7FEFF 		bl	UILineDraw
+ 1245              	.LVL33:
+  74:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[2], "sl2", UI_Graph_ADD, 7, UI_Color_Yellow, 2, 810, shoot_line_locat
+ 1246              		.loc 1 74 5 view .LVU247
+ 1247 0070 04F10F07 		add	r7, r4, #15
+ 1248 0074 4FF43973 		mov	r3, #740
+ 1249 0078 0593     		str	r3, [sp, #20]
+ 1250 007a 4FF47073 		mov	r3, #960
+ 1251 007e 0493     		str	r3, [sp, #16]
+ 1252 0080 4FF4AA72 		mov	r2, #340
+ 1253 0084 0392     		str	r2, [sp, #12]
+ 1254 0086 0293     		str	r3, [sp, #8]
+ 1255 0088 0195     		str	r5, [sp, #4]
+ 1256 008a CDF800B0 		str	fp, [sp]
+ 1257 008e 0723     		movs	r3, #7
+ 1258 0090 0122     		movs	r2, #1
+ 1259 0092 B349     		ldr	r1, .L80+12
+ 1260 0094 3846     		mov	r0, r7
+ 1261 0096 FFF7FEFF 		bl	UILineDraw
+ 1262              	.LVL34:
+  75:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[3], "sl3", UI_Graph_ADD, 7, UI_Color_Yellow, 2, 810, shoot_line_locat
+ 1263              		.loc 1 75 5 view .LVU248
+ 1264 009a 04F11E08 		add	r8, r4, #30
+ 1265 009e 4FF4F573 		mov	r3, #490
+ 1266 00a2 0593     		str	r3, [sp, #20]
+ 1267 00a4 40F25642 		movw	r2, #1110
+ 1268 00a8 0492     		str	r2, [sp, #16]
+ 1269 00aa 0393     		str	r3, [sp, #12]
+ 1270 00ac 40F22A33 		movw	r3, #810
+ 1271 00b0 0293     		str	r3, [sp, #8]
+ 1272 00b2 0226     		movs	r6, #2
+ 1273 00b4 0196     		str	r6, [sp, #4]
+ 1274 00b6 0125     		movs	r5, #1
+ 1275 00b8 0095     		str	r5, [sp]
+ 1276 00ba 0723     		movs	r3, #7
+ 1277 00bc 2A46     		mov	r2, r5
+ 1278 00be A949     		ldr	r1, .L80+16
+ 1279 00c0 4046     		mov	r0, r8
+ 1280 00c2 FFF7FEFF 		bl	UILineDraw
+ 1281              	.LVL35:
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 31
+
+
+  76:modules/referee/referee_task.c ****     UILineDraw(&UI_shoot_line[4], "sl4", UI_Graph_ADD, 7, UI_Color_Yellow, 2, 810, shoot_line_locat
+ 1282              		.loc 1 76 5 view .LVU249
+ 1283 00c6 04F12D09 		add	r9, r4, #45
+ 1284 00ca 40F20323 		movw	r3, #515
+ 1285 00ce 0593     		str	r3, [sp, #20]
+ 1286 00d0 40F25642 		movw	r2, #1110
+ 1287 00d4 0492     		str	r2, [sp, #16]
+ 1288 00d6 0393     		str	r3, [sp, #12]
+ 1289 00d8 40F22A33 		movw	r3, #810
+ 1290 00dc 0293     		str	r3, [sp, #8]
+ 1291 00de 0196     		str	r6, [sp, #4]
+ 1292 00e0 0095     		str	r5, [sp]
+ 1293 00e2 0723     		movs	r3, #7
+ 1294 00e4 2A46     		mov	r2, r5
+ 1295 00e6 A049     		ldr	r1, .L80+20
+ 1296 00e8 4846     		mov	r0, r9
+ 1297 00ea FFF7FEFF 		bl	UILineDraw
+ 1298              	.LVL36:
+  77:modules/referee/referee_task.c ****     UIGraphRefresh(&referee_recv_info->referee_id, 5, UI_shoot_line[0], UI_shoot_line[1], UI_shoot_
+ 1299              		.loc 1 77 5 view .LVU250
+ 1300 00ee 40F23523 		movw	r3, #565
+ 1301 00f2 0593     		str	r3, [sp, #20]
+ 1302 00f4 40F25642 		movw	r2, #1110
+ 1303 00f8 0492     		str	r2, [sp, #16]
+ 1304 00fa 0393     		str	r3, [sp, #12]
+ 1305 00fc 40F22A33 		movw	r3, #810
+ 1306 0100 0293     		str	r3, [sp, #8]
+ 1307 0102 0196     		str	r6, [sp, #4]
+ 1308 0104 0095     		str	r5, [sp]
+ 1309 0106 0723     		movs	r3, #7
+ 1310 0108 2A46     		mov	r2, r5
+ 1311 010a 9849     		ldr	r1, .L80+24
+ 1312 010c 04F13C00 		add	r0, r4, #60
+ 1313 0110 FFF7FEFF 		bl	UILineDraw
+ 1314              	.LVL37:
+  78:modules/referee/referee_task.c **** 
+ 1315              		.loc 1 78 5 view .LVU251
+ 1316 0114 0DF1380C 		add	ip, sp, #56
+ 1317 0118 04F13C03 		add	r3, r4, #60
+ 1318 011c 0FCB     		ldm	r3, {r0, r1, r2, r3}
+ 1319 011e ACE80700 		stmia	ip!, {r0, r1, r2}
+ 1320 0122 2CF8023B 		strh	r3, [ip], #2	@ movhi
+ 1321 0126 1B0C     		lsrs	r3, r3, #16
+ 1322 0128 8CF80030 		strb	r3, [ip]
+ 1323 012c 0AAB     		add	r3, sp, #40
+ 1324 012e D4F82D00 		ldr	r0, [r4, #45]	@ unaligned
+ 1325 0132 D4F83110 		ldr	r1, [r4, #49]	@ unaligned
+ 1326 0136 D4F83520 		ldr	r2, [r4, #53]	@ unaligned
+ 1327 013a 07C3     		stmia	r3!, {r0, r1, r2}
+ 1328 013c B4F83910 		ldrh	r1, [r4, #57]	@ unaligned
+ 1329 0140 94F83B20 		ldrb	r2, [r4, #59]	@ zero_extendqisi2
+ 1330 0144 1980     		strh	r1, [r3]	@ unaligned
+ 1331 0146 9A70     		strb	r2, [r3, #2]
+ 1332 0148 06AB     		add	r3, sp, #24
+ 1333 014a D4F81E00 		ldr	r0, [r4, #30]	@ unaligned
+ 1334 014e D4F82210 		ldr	r1, [r4, #34]	@ unaligned
+ 1335 0152 D4F82620 		ldr	r2, [r4, #38]	@ unaligned
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 32
+
+
+ 1336 0156 07C3     		stmia	r3!, {r0, r1, r2}
+ 1337 0158 618D     		ldrh	r1, [r4, #42]	@ unaligned
+ 1338 015a 94F82C20 		ldrb	r2, [r4, #44]	@ zero_extendqisi2
+ 1339 015e 1980     		strh	r1, [r3]	@ unaligned
+ 1340 0160 9A70     		strb	r2, [r3, #2]
+ 1341 0162 0DEB0B03 		add	r3, sp, fp
+ 1342 0166 D4F80F00 		ldr	r0, [r4, #15]	@ unaligned
+ 1343 016a D4F81310 		ldr	r1, [r4, #19]	@ unaligned
+ 1344 016e D4F81720 		ldr	r2, [r4, #23]	@ unaligned
+ 1345 0172 07C3     		stmia	r3!, {r0, r1, r2}
+ 1346 0174 B4F81B10 		ldrh	r1, [r4, #27]	@ unaligned
+ 1347 0178 627F     		ldrb	r2, [r4, #29]	@ zero_extendqisi2
+ 1348 017a 1980     		strh	r1, [r3]	@ unaligned
+ 1349 017c 9A70     		strb	r2, [r3, #2]
+ 1350 017e 04EB0B03 		add	r3, r4, fp
+ 1351 0182 93E80300 		ldm	r3, {r0, r1}
+ 1352 0186 0090     		str	r0, [sp]
+ 1353 0188 ADF80410 		strh	r1, [sp, #4]	@ movhi
+ 1354 018c 090C     		lsrs	r1, r1, #16
+ 1355 018e 8DF80610 		strb	r1, [sp, #6]
+ 1356 0192 94E80C00 		ldm	r4, {r2, r3}
+ 1357 0196 0521     		movs	r1, #5
+ 1358 0198 DAF80000 		ldr	r0, [r10]
+ 1359 019c FFF7FEFF 		bl	UIGraphRefresh
+ 1360              	.LVL38:
+  81:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[0]);
+ 1361              		.loc 1 81 5 view .LVU252
+ 1362 01a0 734C     		ldr	r4, .L80+28
+ 1363 01a2 744B     		ldr	r3, .L80+32
+ 1364 01a4 0593     		str	r3, [sp, #20]
+ 1365 01a6 40F2EE23 		movw	r3, #750
+ 1366 01aa 0493     		str	r3, [sp, #16]
+ 1367 01ac 4FF09609 		mov	r9, #150
+ 1368 01b0 CDF80C90 		str	r9, [sp, #12]
+ 1369 01b4 0296     		str	r6, [sp, #8]
+ 1370 01b6 4FF00F08 		mov	r8, #15
+ 1371 01ba CDF80480 		str	r8, [sp, #4]
+ 1372 01be 0023     		movs	r3, #0
+ 1373 01c0 0093     		str	r3, [sp]
+ 1374 01c2 5B46     		mov	r3, fp
+ 1375 01c4 2A46     		mov	r2, r5
+ 1376 01c6 6C49     		ldr	r1, .L80+36
+ 1377 01c8 2046     		mov	r0, r4
+ 1378 01ca FFF7FEFF 		bl	UICharDraw
+ 1379              	.LVL39:
+  82:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[1], "ss1", UI_Graph_ADD, 8, UI_Color_Yellow, 15, 2, 150, 700, "gimbal:
+ 1380              		.loc 1 82 5 view .LVU253
+ 1381 01ce 6F46     		mov	r7, sp
+ 1382 01d0 04F10C0C 		add	ip, r4, #12
+ 1383 01d4 BCE80F00 		ldmia	ip!, {r0, r1, r2, r3}
+ 1384 01d8 0FC7     		stmia	r7!, {r0, r1, r2, r3}
+ 1385 01da BCE80F00 		ldmia	ip!, {r0, r1, r2, r3}
+ 1386 01de 0FC7     		stmia	r7!, {r0, r1, r2, r3}
+ 1387 01e0 DCF80030 		ldr	r3, [ip]
+ 1388 01e4 3B70     		strb	r3, [r7]
+ 1389 01e6 94E80E00 		ldm	r4, {r1, r2, r3}
+ 1390 01ea DAF80000 		ldr	r0, [r10]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 33
+
+
+ 1391 01ee FFF7FEFF 		bl	UICharRefresh
+ 1392              	.LVL40:
+  83:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[1]);
+ 1393              		.loc 1 83 5 view .LVU254
+ 1394 01f2 624B     		ldr	r3, .L80+40
+ 1395 01f4 0593     		str	r3, [sp, #20]
+ 1396 01f6 4FF42F73 		mov	r3, #700
+ 1397 01fa 0493     		str	r3, [sp, #16]
+ 1398 01fc CDF80C90 		str	r9, [sp, #12]
+ 1399 0200 0296     		str	r6, [sp, #8]
+ 1400 0202 CDF80480 		str	r8, [sp, #4]
+ 1401 0206 0095     		str	r5, [sp]
+ 1402 0208 5B46     		mov	r3, fp
+ 1403 020a 2A46     		mov	r2, r5
+ 1404 020c 5C49     		ldr	r1, .L80+44
+ 1405 020e 04F12D00 		add	r0, r4, #45
+ 1406 0212 FFF7FEFF 		bl	UICharDraw
+ 1407              	.LVL41:
+  84:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[2], "ss2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 150, 650, "shoot:"
+ 1408              		.loc 1 84 5 view .LVU255
+  84:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[2], "ss2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 150, 650, "shoot:"
+ 1409              		.loc 1 84 37 is_stmt 0 view .LVU256
+ 1410 0216 DAF800C0 		ldr	ip, [r10]
+  84:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[2], "ss2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 150, 650, "shoot:"
+ 1411              		.loc 1 84 5 view .LVU257
+ 1412 021a D4F82D90 		ldr	r9, [r4, #45]	@ unaligned
+ 1413 021e D4F83180 		ldr	r8, [r4, #49]	@ unaligned
+ 1414 0222 D4F835E0 		ldr	lr, [r4, #53]	@ unaligned
+ 1415 0226 04F13905 		add	r5, r4, #57
+ 1416 022a 6F46     		mov	r7, sp
+ 1417 022c 5934     		adds	r4, r4, #89
+ 1418              	.L70:
+ 1419 022e 3E46     		mov	r6, r7
+ 1420 0230 2868     		ldr	r0, [r5]	@ unaligned
+ 1421 0232 6968     		ldr	r1, [r5, #4]	@ unaligned
+ 1422 0234 AA68     		ldr	r2, [r5, #8]	@ unaligned
+ 1423 0236 EB68     		ldr	r3, [r5, #12]	@ unaligned
+ 1424 0238 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 1425 023a 1035     		adds	r5, r5, #16
+ 1426 023c 3746     		mov	r7, r6
+ 1427 023e A542     		cmp	r5, r4
+ 1428 0240 F5D1     		bne	.L70
+ 1429 0242 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 1430 0244 3370     		strb	r3, [r6]
+ 1431 0246 4946     		mov	r1, r9
+ 1432 0248 4246     		mov	r2, r8
+ 1433 024a 7346     		mov	r3, lr
+ 1434 024c 6046     		mov	r0, ip
+ 1435 024e FFF7FEFF 		bl	UICharRefresh
+ 1436              	.LVL42:
+  85:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[2]);
+ 1437              		.loc 1 85 5 is_stmt 1 view .LVU258
+ 1438 0252 4C4D     		ldr	r5, .L80+48
+ 1439 0254 4C4B     		ldr	r3, .L80+52
+ 1440 0256 0593     		str	r3, [sp, #20]
+ 1441 0258 40F28A23 		movw	r3, #650
+ 1442 025c 0493     		str	r3, [sp, #16]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 34
+
+
+ 1443 025e 9623     		movs	r3, #150
+ 1444 0260 0393     		str	r3, [sp, #12]
+ 1445 0262 0223     		movs	r3, #2
+ 1446 0264 0293     		str	r3, [sp, #8]
+ 1447 0266 0F23     		movs	r3, #15
+ 1448 0268 0193     		str	r3, [sp, #4]
+ 1449 026a 0323     		movs	r3, #3
+ 1450 026c 0093     		str	r3, [sp]
+ 1451 026e 0823     		movs	r3, #8
+ 1452 0270 0122     		movs	r2, #1
+ 1453 0272 4649     		ldr	r1, .L80+56
+ 1454 0274 2846     		mov	r0, r5
+ 1455 0276 FFF7FEFF 		bl	UICharDraw
+ 1456              	.LVL43:
+  86:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[3], "ss3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 600, "frict:");
+ 1457              		.loc 1 86 5 view .LVU259
+  86:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[3], "ss3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 600, "frict:");
+ 1458              		.loc 1 86 37 is_stmt 0 view .LVU260
+ 1459 027a 364B     		ldr	r3, .L80
+ 1460 027c D3F800C0 		ldr	ip, [r3]
+  86:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[3], "ss3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 600, "frict:");
+ 1461              		.loc 1 86 5 view .LVU261
+ 1462 0280 2B46     		mov	r3, r5
+ 1463 0282 53F85A99 		ldr	r9, [r3], #-90	@ unaligned
+ 1464 0286 D3F85E80 		ldr	r8, [r3, #94]	@ unaligned
+ 1465 028a D3F862E0 		ldr	lr, [r3, #98]	@ unaligned
+ 1466 028e 05F10C04 		add	r4, r5, #12
+ 1467 0292 6F46     		mov	r7, sp
+ 1468 0294 2C35     		adds	r5, r5, #44
+ 1469              	.L71:
+ 1470 0296 3E46     		mov	r6, r7
+ 1471 0298 2068     		ldr	r0, [r4]	@ unaligned
+ 1472 029a 6168     		ldr	r1, [r4, #4]	@ unaligned
+ 1473 029c A268     		ldr	r2, [r4, #8]	@ unaligned
+ 1474 029e E368     		ldr	r3, [r4, #12]	@ unaligned
+ 1475 02a0 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 1476 02a2 1034     		adds	r4, r4, #16
+ 1477 02a4 3746     		mov	r7, r6
+ 1478 02a6 AC42     		cmp	r4, r5
+ 1479 02a8 F5D1     		bne	.L71
+ 1480 02aa 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 1481 02ac 3370     		strb	r3, [r6]
+ 1482 02ae 4946     		mov	r1, r9
+ 1483 02b0 4246     		mov	r2, r8
+ 1484 02b2 7346     		mov	r3, lr
+ 1485 02b4 6046     		mov	r0, ip
+ 1486 02b6 FFF7FEFF 		bl	UICharRefresh
+ 1487              	.LVL44:
+  87:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[3]);
+ 1488              		.loc 1 87 5 is_stmt 1 view .LVU262
+ 1489 02ba 354D     		ldr	r5, .L80+60
+ 1490 02bc 354B     		ldr	r3, .L80+64
+ 1491 02be 0593     		str	r3, [sp, #20]
+ 1492 02c0 4FF41673 		mov	r3, #600
+ 1493 02c4 0493     		str	r3, [sp, #16]
+ 1494 02c6 9623     		movs	r3, #150
+ 1495 02c8 0393     		str	r3, [sp, #12]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 35
+
+
+ 1496 02ca 0223     		movs	r3, #2
+ 1497 02cc 0293     		str	r3, [sp, #8]
+ 1498 02ce 0F23     		movs	r3, #15
+ 1499 02d0 0193     		str	r3, [sp, #4]
+ 1500 02d2 0523     		movs	r3, #5
+ 1501 02d4 0093     		str	r3, [sp]
+ 1502 02d6 0823     		movs	r3, #8
+ 1503 02d8 0122     		movs	r2, #1
+ 1504 02da 2F49     		ldr	r1, .L80+68
+ 1505 02dc 2846     		mov	r0, r5
+ 1506 02de FFF7FEFF 		bl	UICharDraw
+ 1507              	.LVL45:
+  88:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[4], "ss4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 550, "lid:");
+ 1508              		.loc 1 88 5 view .LVU263
+  88:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[4], "ss4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 550, "lid:");
+ 1509              		.loc 1 88 37 is_stmt 0 view .LVU264
+ 1510 02e2 1C4B     		ldr	r3, .L80
+ 1511 02e4 D3F800C0 		ldr	ip, [r3]
+  88:modules/referee/referee_task.c ****     UICharDraw(&UI_State_sta[4], "ss4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 150, 550, "lid:");
+ 1512              		.loc 1 88 5 view .LVU265
+ 1513 02e8 2B46     		mov	r3, r5
+ 1514 02ea 53F88799 		ldr	r9, [r3], #-135	@ unaligned
+ 1515 02ee D3F88B80 		ldr	r8, [r3, #139]	@ unaligned
+ 1516 02f2 D3F88FE0 		ldr	lr, [r3, #143]	@ unaligned
+ 1517 02f6 05F10C04 		add	r4, r5, #12
+ 1518 02fa 6F46     		mov	r7, sp
+ 1519 02fc 2C35     		adds	r5, r5, #44
+ 1520              	.L72:
+ 1521 02fe 3E46     		mov	r6, r7
+ 1522 0300 2068     		ldr	r0, [r4]	@ unaligned
+ 1523 0302 6168     		ldr	r1, [r4, #4]	@ unaligned
+ 1524 0304 A268     		ldr	r2, [r4, #8]	@ unaligned
+ 1525 0306 E368     		ldr	r3, [r4, #12]	@ unaligned
+ 1526 0308 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 1527 030a 1034     		adds	r4, r4, #16
+ 1528 030c 3746     		mov	r7, r6
+ 1529 030e AC42     		cmp	r4, r5
+ 1530 0310 F5D1     		bne	.L72
+ 1531 0312 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 1532 0314 3370     		strb	r3, [r6]
+ 1533 0316 4946     		mov	r1, r9
+ 1534 0318 4246     		mov	r2, r8
+ 1535 031a 7346     		mov	r3, lr
+ 1536 031c 6046     		mov	r0, ip
+ 1537 031e FFF7FEFF 		bl	UICharRefresh
+ 1538              	.LVL46:
+  89:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[4]);
+ 1539              		.loc 1 89 5 is_stmt 1 view .LVU266
+ 1540 0322 1E4E     		ldr	r6, .L80+72
+ 1541 0324 1E4B     		ldr	r3, .L80+76
+ 1542 0326 0593     		str	r3, [sp, #20]
+ 1543 0328 40F22623 		movw	r3, #550
+ 1544 032c 0493     		str	r3, [sp, #16]
+ 1545 032e 9623     		movs	r3, #150
+ 1546 0330 0393     		str	r3, [sp, #12]
+ 1547 0332 4FF00209 		mov	r9, #2
+ 1548 0336 CDF80890 		str	r9, [sp, #8]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 36
+
+
+ 1549 033a 4FF00F08 		mov	r8, #15
+ 1550 033e CDF80480 		str	r8, [sp, #4]
+ 1551 0342 0523     		movs	r3, #5
+ 1552 0344 0093     		str	r3, [sp]
+ 1553 0346 0823     		movs	r3, #8
+ 1554 0348 0122     		movs	r2, #1
+ 1555 034a 1649     		ldr	r1, .L80+80
+ 1556 034c 3046     		mov	r0, r6
+ 1557 034e FFF7FEFF 		bl	UICharDraw
+ 1558              	.LVL47:
+ 1559 0352 29E0     		b	.L81
+ 1560              	.L82:
+ 1561              		.align	2
+ 1562              	.L80:
+ 1563 0354 00000000 		.word	referee_recv_info
+ 1564 0358 00000000 		.word	UI_shoot_line
+ 1565 035c 00000000 		.word	.LC17
+ 1566 0360 04000000 		.word	.LC18
+ 1567 0364 08000000 		.word	.LC19
+ 1568 0368 0C000000 		.word	.LC20
+ 1569 036c 10000000 		.word	.LC21
+ 1570 0370 00000000 		.word	UI_State_sta
+ 1571 0374 18000000 		.word	.LC23
+ 1572 0378 14000000 		.word	.LC22
+ 1573 037c 28000000 		.word	.LC25
+ 1574 0380 24000000 		.word	.LC24
+ 1575 0384 5A000000 		.word	UI_State_sta+90
+ 1576 0388 34000000 		.word	.LC27
+ 1577 038c 30000000 		.word	.LC26
+ 1578 0390 87000000 		.word	UI_State_sta+135
+ 1579 0394 40000000 		.word	.LC29
+ 1580 0398 3C000000 		.word	.LC28
+ 1581 039c B4000000 		.word	UI_State_sta+180
+ 1582 03a0 4C000000 		.word	.LC31
+ 1583 03a4 48000000 		.word	.LC30
+ 1584              	.L81:
+  90:modules/referee/referee_task.c **** 
+ 1585              		.loc 1 90 5 view .LVU267
+  90:modules/referee/referee_task.c **** 
+ 1586              		.loc 1 90 37 is_stmt 0 view .LVU268
+ 1587 03a8 C74F     		ldr	r7, .L83
+  90:modules/referee/referee_task.c **** 
+ 1588              		.loc 1 90 5 view .LVU269
+ 1589 03aa 6C46     		mov	r4, sp
+ 1590 03ac 06F10C05 		add	r5, r6, #12
+ 1591 03b0 0FCD     		ldmia	r5!, {r0, r1, r2, r3}
+ 1592 03b2 0FC4     		stmia	r4!, {r0, r1, r2, r3}
+ 1593 03b4 0FCD     		ldmia	r5!, {r0, r1, r2, r3}
+ 1594 03b6 0FC4     		stmia	r4!, {r0, r1, r2, r3}
+ 1595 03b8 2B68     		ldr	r3, [r5]
+ 1596 03ba 2370     		strb	r3, [r4]
+ 1597 03bc 96E80E00 		ldm	r6, {r1, r2, r3}
+ 1598 03c0 3868     		ldr	r0, [r7]
+ 1599 03c2 FFF7FEFF 		bl	UICharRefresh
+ 1600              	.LVL48:
+  94:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[0]);
+ 1601              		.loc 1 94 5 is_stmt 1 view .LVU270
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 37
+
+
+ 1602 03c6 C14C     		ldr	r4, .L83+4
+ 1603 03c8 DFF848B3 		ldr	fp, .L83+76
+ 1604 03cc CDF814B0 		str	fp, [sp, #20]
+ 1605 03d0 40F2EE23 		movw	r3, #750
+ 1606 03d4 0493     		str	r3, [sp, #16]
+ 1607 03d6 4FF4877A 		mov	r10, #270
+ 1608 03da CDF80CA0 		str	r10, [sp, #12]
+ 1609 03de CDF80890 		str	r9, [sp, #8]
+ 1610 03e2 CDF80480 		str	r8, [sp, #4]
+ 1611 03e6 0023     		movs	r3, #0
+ 1612 03e8 0093     		str	r3, [sp]
+ 1613 03ea 0823     		movs	r3, #8
+ 1614 03ec 0122     		movs	r2, #1
+ 1615 03ee B849     		ldr	r1, .L83+8
+ 1616 03f0 2046     		mov	r0, r4
+ 1617 03f2 FFF7FEFF 		bl	UICharDraw
+ 1618              	.LVL49:
+  95:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_ADD, 8, UI_Color_Yellow, 15, 2, 270, 700, "zerofor
+ 1619              		.loc 1 95 5 view .LVU271
+ 1620 03f6 6D46     		mov	r5, sp
+ 1621 03f8 04F10C06 		add	r6, r4, #12
+ 1622 03fc 0FCE     		ldmia	r6!, {r0, r1, r2, r3}
+ 1623 03fe 0FC5     		stmia	r5!, {r0, r1, r2, r3}
+ 1624 0400 0FCE     		ldmia	r6!, {r0, r1, r2, r3}
+ 1625 0402 0FC5     		stmia	r5!, {r0, r1, r2, r3}
+ 1626 0404 3368     		ldr	r3, [r6]
+ 1627 0406 2B70     		strb	r3, [r5]
+ 1628 0408 94E80E00 		ldm	r4, {r1, r2, r3}
+ 1629 040c 3868     		ldr	r0, [r7]
+ 1630 040e FFF7FEFF 		bl	UICharRefresh
+ 1631              	.LVL50:
+  96:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[1]);
+ 1632              		.loc 1 96 5 view .LVU272
+ 1633 0412 CDF814B0 		str	fp, [sp, #20]
+ 1634 0416 4FF42F73 		mov	r3, #700
+ 1635 041a 0493     		str	r3, [sp, #16]
+ 1636 041c CDF80CA0 		str	r10, [sp, #12]
+ 1637 0420 CDF80890 		str	r9, [sp, #8]
+ 1638 0424 CDF80480 		str	r8, [sp, #4]
+ 1639 0428 0122     		movs	r2, #1
+ 1640 042a 0092     		str	r2, [sp]
+ 1641 042c 0823     		movs	r3, #8
+ 1642 042e A949     		ldr	r1, .L83+12
+ 1643 0430 04F12D00 		add	r0, r4, #45
+ 1644 0434 FFF7FEFF 		bl	UICharDraw
+ 1645              	.LVL51:
+  97:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 270, 650, "off");
+ 1646              		.loc 1 97 5 view .LVU273
+  97:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 270, 650, "off");
+ 1647              		.loc 1 97 37 is_stmt 0 view .LVU274
+ 1648 0438 D7F800C0 		ldr	ip, [r7]
+  97:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Orange, 15, 2, 270, 650, "off");
+ 1649              		.loc 1 97 5 view .LVU275
+ 1650 043c D4F82D90 		ldr	r9, [r4, #45]	@ unaligned
+ 1651 0440 D4F83180 		ldr	r8, [r4, #49]	@ unaligned
+ 1652 0444 D4F835E0 		ldr	lr, [r4, #53]	@ unaligned
+ 1653 0448 04F13905 		add	r5, r4, #57
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 38
+
+
+ 1654 044c 6F46     		mov	r7, sp
+ 1655 044e 5934     		adds	r4, r4, #89
+ 1656              	.L73:
+ 1657 0450 3E46     		mov	r6, r7
+ 1658 0452 2868     		ldr	r0, [r5]	@ unaligned
+ 1659 0454 6968     		ldr	r1, [r5, #4]	@ unaligned
+ 1660 0456 AA68     		ldr	r2, [r5, #8]	@ unaligned
+ 1661 0458 EB68     		ldr	r3, [r5, #12]	@ unaligned
+ 1662 045a 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 1663 045c 1035     		adds	r5, r5, #16
+ 1664 045e 3746     		mov	r7, r6
+ 1665 0460 A542     		cmp	r5, r4
+ 1666 0462 F5D1     		bne	.L73
+ 1667 0464 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 1668 0466 3370     		strb	r3, [r6]
+ 1669 0468 4946     		mov	r1, r9
+ 1670 046a 4246     		mov	r2, r8
+ 1671 046c 7346     		mov	r3, lr
+ 1672 046e 6046     		mov	r0, ip
+ 1673 0470 FFF7FEFF 		bl	UICharRefresh
+ 1674              	.LVL52:
+  98:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+ 1675              		.loc 1 98 5 is_stmt 1 view .LVU276
+ 1676 0474 984D     		ldr	r5, .L83+16
+ 1677 0476 994B     		ldr	r3, .L83+20
+ 1678 0478 0593     		str	r3, [sp, #20]
+ 1679 047a 40F28A23 		movw	r3, #650
+ 1680 047e 0493     		str	r3, [sp, #16]
+ 1681 0480 4FF48773 		mov	r3, #270
+ 1682 0484 0393     		str	r3, [sp, #12]
+ 1683 0486 0223     		movs	r3, #2
+ 1684 0488 0293     		str	r3, [sp, #8]
+ 1685 048a 0F23     		movs	r3, #15
+ 1686 048c 0193     		str	r3, [sp, #4]
+ 1687 048e 0323     		movs	r3, #3
+ 1688 0490 0093     		str	r3, [sp]
+ 1689 0492 0823     		movs	r3, #8
+ 1690 0494 0122     		movs	r2, #1
+ 1691 0496 9249     		ldr	r1, .L83+24
+ 1692 0498 2846     		mov	r0, r5
+ 1693 049a FFF7FEFF 		bl	UICharDraw
+ 1694              	.LVL53:
+  99:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 600, "off");
+ 1695              		.loc 1 99 5 view .LVU277
+  99:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 600, "off");
+ 1696              		.loc 1 99 37 is_stmt 0 view .LVU278
+ 1697 049e 8A4B     		ldr	r3, .L83
+ 1698 04a0 D3F800C0 		ldr	ip, [r3]
+  99:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 600, "off");
+ 1699              		.loc 1 99 5 view .LVU279
+ 1700 04a4 2B46     		mov	r3, r5
+ 1701 04a6 53F85A99 		ldr	r9, [r3], #-90	@ unaligned
+ 1702 04aa D3F85E80 		ldr	r8, [r3, #94]	@ unaligned
+ 1703 04ae D3F862E0 		ldr	lr, [r3, #98]	@ unaligned
+ 1704 04b2 05F10C04 		add	r4, r5, #12
+ 1705 04b6 6F46     		mov	r7, sp
+ 1706 04b8 2C35     		adds	r5, r5, #44
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 39
+
+
+ 1707              	.L74:
+ 1708 04ba 3E46     		mov	r6, r7
+ 1709 04bc 2068     		ldr	r0, [r4]	@ unaligned
+ 1710 04be 6168     		ldr	r1, [r4, #4]	@ unaligned
+ 1711 04c0 A268     		ldr	r2, [r4, #8]	@ unaligned
+ 1712 04c2 E368     		ldr	r3, [r4, #12]	@ unaligned
+ 1713 04c4 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 1714 04c6 1034     		adds	r4, r4, #16
+ 1715 04c8 3746     		mov	r7, r6
+ 1716 04ca AC42     		cmp	r4, r5
+ 1717 04cc F5D1     		bne	.L74
+ 1718 04ce 2478     		ldrb	r4, [r4]	@ zero_extendqisi2
+ 1719 04d0 3470     		strb	r4, [r6]
+ 1720 04d2 4946     		mov	r1, r9
+ 1721 04d4 4246     		mov	r2, r8
+ 1722 04d6 7346     		mov	r3, lr
+ 1723 04d8 6046     		mov	r0, ip
+ 1724 04da FFF7FEFF 		bl	UICharRefresh
+ 1725              	.LVL54:
+ 100:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+ 1726              		.loc 1 100 5 is_stmt 1 view .LVU280
+ 1727 04de 814D     		ldr	r5, .L83+28
+ 1728 04e0 7E4B     		ldr	r3, .L83+20
+ 1729 04e2 0593     		str	r3, [sp, #20]
+ 1730 04e4 4FF41673 		mov	r3, #600
+ 1731 04e8 0493     		str	r3, [sp, #16]
+ 1732 04ea 4FF48773 		mov	r3, #270
+ 1733 04ee 0393     		str	r3, [sp, #12]
+ 1734 04f0 0223     		movs	r3, #2
+ 1735 04f2 0293     		str	r3, [sp, #8]
+ 1736 04f4 0F23     		movs	r3, #15
+ 1737 04f6 0193     		str	r3, [sp, #4]
+ 1738 04f8 0523     		movs	r3, #5
+ 1739 04fa 0093     		str	r3, [sp]
+ 1740 04fc 0823     		movs	r3, #8
+ 1741 04fe 0122     		movs	r2, #1
+ 1742 0500 7949     		ldr	r1, .L83+32
+ 1743 0502 2846     		mov	r0, r5
+ 1744 0504 FFF7FEFF 		bl	UICharDraw
+ 1745              	.LVL55:
+ 101:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 550, "open ");
+ 1746              		.loc 1 101 5 view .LVU281
+ 101:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 550, "open ");
+ 1747              		.loc 1 101 37 is_stmt 0 view .LVU282
+ 1748 0508 6F4B     		ldr	r3, .L83
+ 1749 050a D3F800C0 		ldr	ip, [r3]
+ 101:modules/referee/referee_task.c ****     UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_ADD, 8, UI_Color_Pink, 15, 2, 270, 550, "open ");
+ 1750              		.loc 1 101 5 view .LVU283
+ 1751 050e 2B46     		mov	r3, r5
+ 1752 0510 53F88799 		ldr	r9, [r3], #-135	@ unaligned
+ 1753 0514 D3F88B80 		ldr	r8, [r3, #139]	@ unaligned
+ 1754 0518 D3F88FE0 		ldr	lr, [r3, #143]	@ unaligned
+ 1755 051c 05F10C04 		add	r4, r5, #12
+ 1756 0520 6F46     		mov	r7, sp
+ 1757 0522 2C35     		adds	r5, r5, #44
+ 1758              	.L75:
+ 1759 0524 3E46     		mov	r6, r7
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 40
+
+
+ 1760 0526 2068     		ldr	r0, [r4]	@ unaligned
+ 1761 0528 6168     		ldr	r1, [r4, #4]	@ unaligned
+ 1762 052a A268     		ldr	r2, [r4, #8]	@ unaligned
+ 1763 052c E368     		ldr	r3, [r4, #12]	@ unaligned
+ 1764 052e 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 1765 0530 1034     		adds	r4, r4, #16
+ 1766 0532 3746     		mov	r7, r6
+ 1767 0534 AC42     		cmp	r4, r5
+ 1768 0536 F5D1     		bne	.L75
+ 1769 0538 2478     		ldrb	r4, [r4]	@ zero_extendqisi2
+ 1770 053a 3470     		strb	r4, [r6]
+ 1771 053c 4946     		mov	r1, r9
+ 1772 053e 4246     		mov	r2, r8
+ 1773 0540 7346     		mov	r3, lr
+ 1774 0542 6046     		mov	r0, ip
+ 1775 0544 FFF7FEFF 		bl	UICharRefresh
+ 1776              	.LVL56:
+ 102:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+ 1777              		.loc 1 102 5 is_stmt 1 view .LVU284
+ 1778 0548 684E     		ldr	r6, .L83+36
+ 1779 054a 694B     		ldr	r3, .L83+40
+ 1780 054c 0593     		str	r3, [sp, #20]
+ 1781 054e 40F22623 		movw	r3, #550
+ 1782 0552 0493     		str	r3, [sp, #16]
+ 1783 0554 4FF48773 		mov	r3, #270
+ 1784 0558 0393     		str	r3, [sp, #12]
+ 1785 055a 0227     		movs	r7, #2
+ 1786 055c 0297     		str	r7, [sp, #8]
+ 1787 055e 0F23     		movs	r3, #15
+ 1788 0560 0193     		str	r3, [sp, #4]
+ 1789 0562 0523     		movs	r3, #5
+ 1790 0564 0093     		str	r3, [sp]
+ 1791 0566 0823     		movs	r3, #8
+ 1792 0568 0122     		movs	r2, #1
+ 1793 056a 6249     		ldr	r1, .L83+44
+ 1794 056c 3046     		mov	r0, r6
+ 1795 056e FFF7FEFF 		bl	UICharDraw
+ 1796              	.LVL57:
+ 103:modules/referee/referee_task.c **** 
+ 1797              		.loc 1 103 5 view .LVU285
+ 103:modules/referee/referee_task.c **** 
+ 1798              		.loc 1 103 37 is_stmt 0 view .LVU286
+ 1799 0572 DFF85481 		ldr	r8, .L83
+ 103:modules/referee/referee_task.c **** 
+ 1800              		.loc 1 103 5 view .LVU287
+ 1801 0576 6C46     		mov	r4, sp
+ 1802 0578 06F10C05 		add	r5, r6, #12
+ 1803 057c 0FCD     		ldmia	r5!, {r0, r1, r2, r3}
+ 1804 057e 0FC4     		stmia	r4!, {r0, r1, r2, r3}
+ 1805 0580 0FCD     		ldmia	r5!, {r0, r1, r2, r3}
+ 1806 0582 0FC4     		stmia	r4!, {r0, r1, r2, r3}
+ 1807 0584 2B68     		ldr	r3, [r5]
+ 1808 0586 2370     		strb	r3, [r4]
+ 1809 0588 96E80E00 		ldm	r6, {r1, r2, r3}
+ 1810 058c D8F80000 		ldr	r0, [r8]
+ 1811 0590 FFF7FEFF 		bl	UICharRefresh
+ 1812              	.LVL58:
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 41
+
+
+ 106:modules/referee/referee_task.c ****     UICharRefresh(&referee_recv_info->referee_id, UI_State_sta[5]);
+ 1813              		.loc 1 106 5 is_stmt 1 view .LVU288
+ 1814 0594 584D     		ldr	r5, .L83+48
+ 1815 0596 594B     		ldr	r3, .L83+52
+ 1816 0598 0593     		str	r3, [sp, #20]
+ 1817 059a E623     		movs	r3, #230
+ 1818 059c 0493     		str	r3, [sp, #16]
+ 1819 059e 4FF41B73 		mov	r3, #620
+ 1820 05a2 0393     		str	r3, [sp, #12]
+ 1821 05a4 0297     		str	r7, [sp, #8]
+ 1822 05a6 1223     		movs	r3, #18
+ 1823 05a8 0193     		str	r3, [sp, #4]
+ 1824 05aa 0097     		str	r7, [sp]
+ 1825 05ac 0723     		movs	r3, #7
+ 1826 05ae 0122     		movs	r2, #1
+ 1827 05b0 5349     		ldr	r1, .L83+56
+ 1828 05b2 2846     		mov	r0, r5
+ 1829 05b4 FFF7FEFF 		bl	UICharDraw
+ 1830              	.LVL59:
+ 107:modules/referee/referee_task.c ****     // 能量条框
+ 1831              		.loc 1 107 5 view .LVU289
+ 107:modules/referee/referee_task.c ****     // 能量条框
+ 1832              		.loc 1 107 37 is_stmt 0 view .LVU290
+ 1833 05b8 D8F800C0 		ldr	ip, [r8]
+ 107:modules/referee/referee_task.c ****     // 能量条框
+ 1834              		.loc 1 107 5 view .LVU291
+ 1835 05bc 2B46     		mov	r3, r5
+ 1836 05be 53F8E199 		ldr	r9, [r3], #-225	@ unaligned
+ 1837 05c2 D3F8E580 		ldr	r8, [r3, #229]	@ unaligned
+ 1838 05c6 D3F8E9E0 		ldr	lr, [r3, #233]	@ unaligned
+ 1839 05ca 05F10C04 		add	r4, r5, #12
+ 1840 05ce 6F46     		mov	r7, sp
+ 1841 05d0 2C35     		adds	r5, r5, #44
+ 1842              	.L76:
+ 1843 05d2 3E46     		mov	r6, r7
+ 1844 05d4 2068     		ldr	r0, [r4]	@ unaligned
+ 1845 05d6 6168     		ldr	r1, [r4, #4]	@ unaligned
+ 1846 05d8 A268     		ldr	r2, [r4, #8]	@ unaligned
+ 1847 05da E368     		ldr	r3, [r4, #12]	@ unaligned
+ 1848 05dc 0FC6     		stmia	r6!, {r0, r1, r2, r3}
+ 1849 05de 1034     		adds	r4, r4, #16
+ 1850 05e0 3746     		mov	r7, r6
+ 1851 05e2 AC42     		cmp	r4, r5
+ 1852 05e4 F5D1     		bne	.L76
+ 1853 05e6 2478     		ldrb	r4, [r4]	@ zero_extendqisi2
+ 1854 05e8 3470     		strb	r4, [r6]
+ 1855 05ea 4946     		mov	r1, r9
+ 1856 05ec 4246     		mov	r2, r8
+ 1857 05ee 7346     		mov	r3, lr
+ 1858 05f0 6046     		mov	r0, ip
+ 1859 05f2 FFF7FEFF 		bl	UICharRefresh
+ 1860              	.LVL60:
+ 109:modules/referee/referee_task.c ****     UIGraphRefresh(&referee_recv_info->referee_id, 1, UI_Energy[0]);
+ 1861              		.loc 1 109 5 is_stmt 1 view .LVU292
+ 1862 05f6 434C     		ldr	r4, .L83+60
+ 1863 05f8 B423     		movs	r3, #180
+ 1864 05fa 0593     		str	r3, [sp, #20]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 42
+
+
+ 1865 05fc 40F2C443 		movw	r3, #1220
+ 1866 0600 0493     		str	r3, [sp, #16]
+ 1867 0602 8C23     		movs	r3, #140
+ 1868 0604 0393     		str	r3, [sp, #12]
+ 1869 0606 4FF43478 		mov	r8, #720
+ 1870 060a CDF80880 		str	r8, [sp, #8]
+ 1871 060e 0225     		movs	r5, #2
+ 1872 0610 0195     		str	r5, [sp, #4]
+ 1873 0612 0095     		str	r5, [sp]
+ 1874 0614 0723     		movs	r3, #7
+ 1875 0616 0122     		movs	r2, #1
+ 1876 0618 3B49     		ldr	r1, .L83+64
+ 1877 061a 2046     		mov	r0, r4
+ 1878 061c FFF7FEFF 		bl	UIRectangleDraw
+ 1879              	.LVL61:
+ 110:modules/referee/referee_task.c **** 
+ 1880              		.loc 1 110 5 view .LVU293
+ 110:modules/referee/referee_task.c **** 
+ 1881              		.loc 1 110 38 is_stmt 0 view .LVU294
+ 1882 0620 294F     		ldr	r7, .L83
+ 110:modules/referee/referee_task.c **** 
+ 1883              		.loc 1 110 5 view .LVU295
+ 1884 0622 E168     		ldr	r1, [r4, #12]
+ 1885 0624 A068     		ldr	r0, [r4, #8]
+ 1886 0626 0090     		str	r0, [sp]
+ 1887 0628 ADF80410 		strh	r1, [sp, #4]	@ movhi
+ 1888 062c 090C     		lsrs	r1, r1, #16
+ 1889 062e 8DF80610 		strb	r1, [sp, #6]
+ 1890 0632 94E80C00 		ldm	r4, {r2, r3}
+ 1891 0636 0121     		movs	r1, #1
+ 1892 0638 3868     		ldr	r0, [r7]
+ 1893 063a FFF7FEFF 		bl	UIGraphRefresh
+ 1894              	.LVL62:
+ 113:modules/referee/referee_task.c ****     // 能量条初始状态
+ 1895              		.loc 1 113 5 is_stmt 1 view .LVU296
+ 1896 063e 45F6C053 		movw	r3, #24000
+ 1897 0642 0693     		str	r3, [sp, #24]
+ 1898 0644 E623     		movs	r3, #230
+ 1899 0646 0593     		str	r3, [sp, #20]
+ 1900 0648 40F2EE23 		movw	r3, #750
+ 1901 064c 0493     		str	r3, [sp, #16]
+ 1902 064e 0395     		str	r5, [sp, #12]
+ 1903 0650 0295     		str	r5, [sp, #8]
+ 1904 0652 1223     		movs	r3, #18
+ 1905 0654 0193     		str	r3, [sp, #4]
+ 1906 0656 0095     		str	r5, [sp]
+ 1907 0658 0823     		movs	r3, #8
+ 1908 065a 0122     		movs	r2, #1
+ 1909 065c 2B49     		ldr	r1, .L83+68
+ 1910 065e 04F10F00 		add	r0, r4, #15
+ 1911 0662 FFF7FEFF 		bl	UIFloatDraw
+ 1912              	.LVL63:
+ 115:modules/referee/referee_task.c ****     UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
+ 1913              		.loc 1 115 5 view .LVU297
+ 1914 0666 04F11E06 		add	r6, r4, #30
+ 1915 066a A023     		movs	r3, #160
+ 1916 066c 0593     		str	r3, [sp, #20]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 43
+
+
+ 1917 066e 4FF47F72 		mov	r2, #1020
+ 1918 0672 0492     		str	r2, [sp, #16]
+ 1919 0674 0393     		str	r3, [sp, #12]
+ 1920 0676 CDF80880 		str	r8, [sp, #8]
+ 1921 067a 1E23     		movs	r3, #30
+ 1922 067c 0193     		str	r3, [sp, #4]
+ 1923 067e 0523     		movs	r3, #5
+ 1924 0680 0093     		str	r3, [sp]
+ 1925 0682 0823     		movs	r3, #8
+ 1926 0684 0122     		movs	r2, #1
+ 1927 0686 2249     		ldr	r1, .L83+72
+ 1928 0688 3046     		mov	r0, r6
+ 1929 068a FFF7FEFF 		bl	UILineDraw
+ 1930              	.LVL64:
+ 116:modules/referee/referee_task.c **** }
+ 1931              		.loc 1 116 5 view .LVU298
+ 1932 068e 02AB     		add	r3, sp, #8
+ 1933 0690 D4F81E00 		ldr	r0, [r4, #30]	@ unaligned
+ 1934 0694 D4F82210 		ldr	r1, [r4, #34]	@ unaligned
+ 1935 0698 D4F82620 		ldr	r2, [r4, #38]	@ unaligned
+ 1936 069c 07C3     		stmia	r3!, {r0, r1, r2}
+ 1937 069e 618D     		ldrh	r1, [r4, #42]	@ unaligned
+ 1938 06a0 94F82C20 		ldrb	r2, [r4, #44]	@ zero_extendqisi2
+ 1939 06a4 1980     		strh	r1, [r3]	@ unaligned
+ 1940 06a6 9A70     		strb	r2, [r3, #2]
+ 1941 06a8 D4F81700 		ldr	r0, [r4, #23]	@ unaligned
+ 1942 06ac 0090     		str	r0, [sp]
+ 1943 06ae B4F81B20 		ldrh	r2, [r4, #27]	@ unaligned
+ 1944 06b2 637F     		ldrb	r3, [r4, #29]	@ zero_extendqisi2
+ 1945 06b4 ADF80420 		strh	r2, [sp, #4]	@ unaligned
+ 1946 06b8 8DF80630 		strb	r3, [sp, #6]
+ 1947 06bc D4F80F20 		ldr	r2, [r4, #15]	@ unaligned
+ 1948 06c0 D4F81330 		ldr	r3, [r4, #19]	@ unaligned
+ 1949 06c4 2946     		mov	r1, r5
+ 1950 06c6 27E0     		b	.L84
+ 1951              	.L85:
+ 1952              		.align	2
+ 1953              	.L83:
+ 1954 06c8 00000000 		.word	referee_recv_info
+ 1955 06cc 00000000 		.word	UI_State_dyn
+ 1956 06d0 18000000 		.word	.LC4
+ 1957 06d4 4C000000 		.word	.LC9
+ 1958 06d8 5A000000 		.word	UI_State_dyn+90
+ 1959 06dc 04000000 		.word	.LC1
+ 1960 06e0 68000000 		.word	.LC12
+ 1961 06e4 87000000 		.word	UI_State_dyn+135
+ 1962 06e8 6C000000 		.word	.LC13
+ 1963 06ec B4000000 		.word	UI_State_dyn+180
+ 1964 06f0 08000000 		.word	.LC2
+ 1965 06f4 70000000 		.word	.LC14
+ 1966 06f8 E1000000 		.word	UI_State_sta+225
+ 1967 06fc 58000000 		.word	.LC33
+ 1968 0700 54000000 		.word	.LC32
+ 1969 0704 00000000 		.word	UI_Energy
+ 1970 0708 60000000 		.word	.LC34
+ 1971 070c 74000000 		.word	.LC15
+ 1972 0710 78000000 		.word	.LC16
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 44
+
+
+ 1973 0714 1C000000 		.word	.LC5
+ 1974              	.L84:
+ 1975 0718 3868     		ldr	r0, [r7]
+ 1976 071a FFF7FEFF 		bl	UIGraphRefresh
+ 1977              	.LVL65:
+ 117:modules/referee/referee_task.c **** 
+ 1978              		.loc 1 117 1 is_stmt 0 view .LVU299
+ 1979 071e 13B0     		add	sp, sp, #76
+ 1980              	.LCFI8:
+ 1981              		.cfi_def_cfa_offset 36
+ 1982              		@ sp needed
+ 1983 0720 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 1984              		.cfi_endproc
+ 1985              	.LFE279:
+ 1987              		.section	.bss.count1,"aw",%nobits
+ 1988              		.align	1
+ 1991              	count1:
+ 1992 0000 0000     		.space	2
+ 1993              		.section	.bss.count,"aw",%nobits
+ 1996              	count:
+ 1997 0000 00       		.space	1
+ 1998              		.section	.bss.UI_State_dyn,"aw",%nobits
+ 1999              		.align	2
+ 2002              	UI_State_dyn:
+ 2003 0000 00000000 		.space	270
+ 2003      00000000 
+ 2003      00000000 
+ 2003      00000000 
+ 2003      00000000 
+ 2004              		.section	.bss.UI_State_sta,"aw",%nobits
+ 2005              		.align	2
+ 2008              	UI_State_sta:
+ 2009 0000 00000000 		.space	270
+ 2009      00000000 
+ 2009      00000000 
+ 2009      00000000 
+ 2009      00000000 
+ 2010              		.section	.bss.UI_Energy,"aw",%nobits
+ 2011              		.align	2
+ 2014              	UI_Energy:
+ 2015 0000 00000000 		.space	45
+ 2015      00000000 
+ 2015      00000000 
+ 2015      00000000 
+ 2015      00000000 
+ 2016              		.section	.bss.UI_shoot_line,"aw",%nobits
+ 2017              		.align	2
+ 2020              	UI_shoot_line:
+ 2021 0000 00000000 		.space	150
+ 2021      00000000 
+ 2021      00000000 
+ 2021      00000000 
+ 2021      00000000 
+ 2022              		.global	UI_Seq
+ 2023              		.section	.bss.UI_Seq,"aw",%nobits
+ 2026              	UI_Seq:
+ 2027 0000 00       		.space	1
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 45
+
+
+ 2028              		.section	.bss.referee_recv_info,"aw",%nobits
+ 2029              		.align	2
+ 2032              	referee_recv_info:
+ 2033 0000 00000000 		.space	4
+ 2034              		.section	.bss.Interactive_data,"aw",%nobits
+ 2035              		.align	2
+ 2038              	Interactive_data:
+ 2039 0000 00000000 		.space	4
+ 2040              		.text
+ 2041              	.Letext0:
+ 2042              		.file 2 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 2043              		.file 3 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 2044              		.file 4 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h"
+ 2045              		.file 5 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h"
+ 2046              		.file 6 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h"
+ 2047              		.file 7 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h"
+ 2048              		.file 8 "modules/referee/referee_protocol.h"
+ 2049              		.file 9 "application/robot_def.h"
+ 2050              		.file 10 "modules/referee/rm_referee.h"
+ 2051              		.file 11 "Middlewares/Third_Party/FreeRTOS/Source/include/task.h"
+ 2052              		.file 12 "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.h"
+ 2053              		.file 13 "modules/referee/referee_UI.h"
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 46
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 referee_task.c
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:21     .text.DeterminRobotID:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:26     .text.DeterminRobotID:00000000 DeterminRobotID
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:64     .text.DeterminRobotID:00000028 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2032   .bss.referee_recv_info:00000000 referee_recv_info
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:69     .text.RobotModeTest:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:74     .text.RobotModeTest:00000000 RobotModeTest
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:115    .text.RobotModeTest:0000002c $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:119    .text.RobotModeTest:00000030 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:225    .text.RobotModeTest:000000a0 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1996   .bss.count:00000000 count
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1991   .bss.count1:00000000 count1
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:231    .text.UIChangeCheck:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:236    .text.UIChangeCheck:00000000 UIChangeCheck
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:355    .rodata.MyUIRefresh.str1.4:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:407    .text.MyUIRefresh:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:412    .text.MyUIRefresh:00000000 MyUIRefresh
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:456    .text.MyUIRefresh:00000022 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:460    .text.MyUIRefresh:00000026 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:625    .text.MyUIRefresh:00000160 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2002   .bss.UI_State_dyn:00000000 UI_State_dyn
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:636    .text.MyUIRefresh:00000184 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:991    .text.MyUIRefresh:00000454 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2014   .bss.UI_Energy:00000000 UI_Energy
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1014   .text.UITaskInit:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1020   .text.UITaskInit:00000000 UITaskInit
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1057   .text.UITaskInit:00000018 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2038   .bss.Interactive_data:00000000 Interactive_data
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1063   .text.UITask:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1069   .text.UITask:00000000 UITask
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1096   .text.UITask:00000018 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1102   .rodata.MyUIInit.str1.4:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1157   .text.MyUIInit:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1163   .text.MyUIInit:00000000 MyUIInit
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1199   .text.MyUIInit:00000018 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1202   .text.MyUIInit:0000001c $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1563   .text.MyUIInit:00000354 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2020   .bss.UI_shoot_line:00000000 UI_shoot_line
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2008   .bss.UI_State_sta:00000000 UI_State_sta
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1587   .text.MyUIInit:000003a8 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1954   .text.MyUIInit:000006c8 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1975   .text.MyUIInit:00000718 $t
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1988   .bss.count1:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1997   .bss.count:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:1999   .bss.UI_State_dyn:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2005   .bss.UI_State_sta:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2011   .bss.UI_Energy:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2017   .bss.UI_shoot_line:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2026   .bss.UI_Seq:00000000 UI_Seq
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2027   .bss.UI_Seq:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2029   .bss.referee_recv_info:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s:2035   .bss.Interactive_data:00000000 $d
+
+UNDEFINED SYMBOLS
+UICharDraw
+UICharRefresh
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccSBWV8G.s 			page 47
+
+
+UIFloatDraw
+UILineDraw
+UIGraphRefresh
+RefereeInit
+vTaskDelete
+osDelay
+UIDelete
+UIRectangleDraw

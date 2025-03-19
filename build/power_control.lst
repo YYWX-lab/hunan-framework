@@ -1,0 +1,2245 @@
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 1
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"power_control.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.file 1 "modules/motor/power_control.c"
+  20              		.section	.text.MotorSenderGrouping,"ax",%progbits
+  21              		.align	1
+  22              		.syntax unified
+  23              		.thumb
+  24              		.thumb_func
+  26              	MotorSenderGrouping:
+  27              	.LVL0:
+  28              	.LFB272:
+   1:modules/motor/power_control.c **** #include "power_control.h"
+   2:modules/motor/power_control.c **** #include "general_def.h"
+   3:modules/motor/power_control.c **** #include "bsp_dwt.h"
+   4:modules/motor/power_control.c **** #include "bsp_log.h"
+   5:modules/motor/power_control.c **** 
+   6:modules/motor/power_control.c **** #define TORQUE_COEF 0.0003662109375f        // (20/16384)*(0.3), 电机转矩系数，与电流和�
+   7:modules/motor/power_control.c **** #define POWER_COEF 187.0f / 3591.0f / 9.55f // 电机机械功率系数，与力矩和转速相关�
+   8:modules/motor/power_control.c **** const float K1[4] = {1.23e-07, 1.23e-07, 1.23e-07, 1.23e-07};
+   9:modules/motor/power_control.c **** const float K2[4] = {1.453e-07, 1.453e-07, 1.453e-07, 1.453e-07};
+  10:modules/motor/power_control.c **** const float constant[4] = {4.081f, 4.081f, 4.081f, 4.081f};
+  11:modules/motor/power_control.c **** 
+  12:modules/motor/power_control.c **** static uint8_t idx = 0; // register idx,是该文件的全局电机索引,在注册时使用
+  13:modules/motor/power_control.c **** /* DJI电机的实例,此处仅保存指针,内存的分配将通过电机实例初始化时通过m
+  14:modules/motor/power_control.c **** static DJIMotorInstance *dji_motor_instance[DJI_MOTOR_CNT] = {NULL}; // 会在control任务中遍�
+  15:modules/motor/power_control.c **** static float initial_torque[4];                                      // 电机输出轴实际转矩
+  16:modules/motor/power_control.c **** static float A, B, C;                                                // 测试用
+  17:modules/motor/power_control.c **** static float power_control_out[4], initial_give_power[4];            // 电机输出功率
+  18:modules/motor/power_control.c **** static float chassis_max_power, chassis_power, initial_total_power = 0.0f;
+  19:modules/motor/power_control.c **** /**
+  20:modules/motor/power_control.c ****  * @brief 由于DJI电机发送以四个一组的形式进行,故对其进行特殊处理,用6个(2
+  21:modules/motor/power_control.c ****  *        该变量将在 DJIMotorControl() 中使用,分组在 MotorSenderGrouping()中进行
+  22:modules/motor/power_control.c ****  *
+  23:modules/motor/power_control.c ****  * @note  因为只用于发送,所以不需要在bsp_can中注册
+  24:modules/motor/power_control.c ****  *
+  25:modules/motor/power_control.c ****  * C610(m2006)/C620(m3508):0x1ff,0x200;
+  26:modules/motor/power_control.c ****  * GM6020:0x1ff,0x2ff
+  27:modules/motor/power_control.c ****  * 反馈(rx_id): GM6020: 0x204+id ; C610/C620: 0x200+id
+  28:modules/motor/power_control.c ****  * can1: [0]:0x1FF,[1]:0x200,[2]:0x2FF
+  29:modules/motor/power_control.c ****  * can2: [3]:0x1FF,[4]:0x200,[5]:0x2FF
+  30:modules/motor/power_control.c ****  */
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 2
+
+
+  31:modules/motor/power_control.c **** static CANInstance sender_assignment[6] = {
+  32:modules/motor/power_control.c ****     [0] = {.can_handle = &hcan1, .txconf.StdId = 0x1ff, .txconf.IDE = CAN_ID_STD, .txconf.RTR = CAN
+  33:modules/motor/power_control.c ****     [1] = {.can_handle = &hcan1, .txconf.StdId = 0x200, .txconf.IDE = CAN_ID_STD, .txconf.RTR = CAN
+  34:modules/motor/power_control.c ****     [2] = {.can_handle = &hcan1, .txconf.StdId = 0x2ff, .txconf.IDE = CAN_ID_STD, .txconf.RTR = CAN
+  35:modules/motor/power_control.c ****     [3] = {.can_handle = &hcan2, .txconf.StdId = 0x1ff, .txconf.IDE = CAN_ID_STD, .txconf.RTR = CAN
+  36:modules/motor/power_control.c ****     [4] = {.can_handle = &hcan2, .txconf.StdId = 0x200, .txconf.IDE = CAN_ID_STD, .txconf.RTR = CAN
+  37:modules/motor/power_control.c ****     [5] = {.can_handle = &hcan2, .txconf.StdId = 0x2ff, .txconf.IDE = CAN_ID_STD, .txconf.RTR = CAN
+  38:modules/motor/power_control.c **** };
+  39:modules/motor/power_control.c **** 
+  40:modules/motor/power_control.c **** /**
+  41:modules/motor/power_control.c ****  * @brief 6个用于确认是否有电机注册到sender_assignment中的标志位,防止发送空�
+  42:modules/motor/power_control.c ****  *        flag的初始化在 MotorSenderGrouping()中进行
+  43:modules/motor/power_control.c ****  */
+  44:modules/motor/power_control.c **** static uint8_t sender_enable_flag[6] = {0};
+  45:modules/motor/power_control.c **** 
+  46:modules/motor/power_control.c **** /**
+  47:modules/motor/power_control.c ****  * @brief 设置底盘的最大功率限制
+  48:modules/motor/power_control.c ****  *
+  49:modules/motor/power_control.c ****  * @param power_limit 限制的功率值
+  50:modules/motor/power_control.c ****  */
+  51:modules/motor/power_control.c **** void SetPowerLimit(float power_limit)
+  52:modules/motor/power_control.c **** {
+  53:modules/motor/power_control.c ****     chassis_max_power = power_limit;
+  54:modules/motor/power_control.c **** }
+  55:modules/motor/power_control.c **** 
+  56:modules/motor/power_control.c **** /**
+  57:modules/motor/power_control.c ****  * @brief 根据电调/拨码开关上的ID,根据说明书的默认id分配方式计算发送ID和
+  58:modules/motor/power_control.c ****  *        并对电机进行分组以便处理多电机控制命令
+  59:modules/motor/power_control.c ****  */
+  60:modules/motor/power_control.c **** static void MotorSenderGrouping(DJIMotorInstance *motor, CAN_Init_Config_s *config)
+  61:modules/motor/power_control.c **** {
+  29              		.loc 1 61 1 view -0
+  30              		.cfi_startproc
+  31              		@ args = 0, pretend = 0, frame = 0
+  32              		@ frame_needed = 0, uses_anonymous_args = 0
+  33              		@ link register save eliminated.
+  34              		.loc 1 61 1 is_stmt 0 view .LVU1
+  35 0000 30B4     		push	{r4, r5}
+  36              	.LCFI0:
+  37              		.cfi_def_cfa_offset 8
+  38              		.cfi_offset 4, -8
+  39              		.cfi_offset 5, -4
+  62:modules/motor/power_control.c ****     uint8_t motor_id = config->tx_id - 1; // 下标从零开始,先减一方便赋值
+  40              		.loc 1 62 5 is_stmt 1 view .LVU2
+  41              		.loc 1 62 38 is_stmt 0 view .LVU3
+  42 0002 91F804C0 		ldrb	ip, [r1, #4]	@ zero_extendqisi2
+  43              		.loc 1 62 13 view .LVU4
+  44 0006 0CF1FF33 		add	r3, ip, #-1
+  45 000a DBB2     		uxtb	r3, r3
+  46              	.LVL1:
+  63:modules/motor/power_control.c ****     uint8_t motor_send_num;
+  47              		.loc 1 63 5 is_stmt 1 view .LVU5
+  64:modules/motor/power_control.c ****     uint8_t motor_grouping;
+  48              		.loc 1 64 5 view .LVU6
+  65:modules/motor/power_control.c **** 
+  66:modules/motor/power_control.c ****     switch (motor->motor_type)
+  49              		.loc 1 66 5 view .LVU7
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 3
+
+
+  50              		.loc 1 66 18 is_stmt 0 view .LVU8
+  51 000c 90F8A621 		ldrb	r2, [r0, #422]	@ zero_extendqisi2
+  52              		.loc 1 66 5 view .LVU9
+  53 0010 012A     		cmp	r2, #1
+  54 0012 3ED0     		beq	.L2
+  55 0014 54B2     		sxtb	r4, r2
+  56 0016 002C     		cmp	r4, #0
+  57 0018 73D0     		beq	.L3
+  58 001a 023A     		subs	r2, r2, #2
+  59 001c D2B2     		uxtb	r2, r2
+  60 001e 012A     		cmp	r2, #1
+  61 0020 6FD8     		bhi	.L3
+  67:modules/motor/power_control.c ****     {
+  68:modules/motor/power_control.c ****     case M2006:
+  69:modules/motor/power_control.c ****     case M3508:
+  70:modules/motor/power_control.c ****         if (motor_id < 4) // 根据ID分组
+  62              		.loc 1 70 9 is_stmt 1 view .LVU10
+  63              		.loc 1 70 12 is_stmt 0 view .LVU11
+  64 0022 032B     		cmp	r3, #3
+  65 0024 16D8     		bhi	.L4
+  71:modules/motor/power_control.c ****         {
+  72:modules/motor/power_control.c ****             motor_send_num = motor_id;
+  66              		.loc 1 72 13 is_stmt 1 view .LVU12
+  67              	.LVL2:
+  73:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 1 : 4;
+  68              		.loc 1 73 13 view .LVU13
+  69              		.loc 1 73 36 is_stmt 0 view .LVU14
+  70 0026 0C68     		ldr	r4, [r1]
+  71              		.loc 1 73 28 view .LVU15
+  72 0028 374A     		ldr	r2, .L26
+  73 002a 9442     		cmp	r4, r2
+  74 002c 0FD0     		beq	.L22
+  72:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 1 : 4;
+  75              		.loc 1 72 28 view .LVU16
+  76 002e 1A46     		mov	r2, r3
+  77              		.loc 1 73 28 discriminator 2 view .LVU17
+  78 0030 0424     		movs	r4, #4
+  79              	.LVL3:
+  80              	.L5:
+  74:modules/motor/power_control.c ****         }
+  75:modules/motor/power_control.c ****         else
+  76:modules/motor/power_control.c ****         {
+  77:modules/motor/power_control.c ****             motor_send_num = motor_id - 4;
+  78:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 0 : 3;
+  79:modules/motor/power_control.c ****         }
+  80:modules/motor/power_control.c **** 
+  81:modules/motor/power_control.c ****         // 计算接收id并设置分组发送id
+  82:modules/motor/power_control.c ****         config->rx_id = 0x200 + motor_id + 1;   // 把ID+1,进行分组设置
+  81              		.loc 1 82 9 is_stmt 1 view .LVU18
+  82              		.loc 1 82 42 is_stmt 0 view .LVU19
+  83 0032 03F20123 		addw	r3, r3, #513
+  84              	.LVL4:
+  85              		.loc 1 82 23 view .LVU20
+  86 0036 8B60     		str	r3, [r1, #8]
+  83:modules/motor/power_control.c ****         sender_enable_flag[motor_grouping] = 1; // 设置发送标志位,防止发送空帧
+  87              		.loc 1 83 9 is_stmt 1 view .LVU21
+  88              		.loc 1 83 44 is_stmt 0 view .LVU22
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 4
+
+
+  89 0038 344B     		ldr	r3, .L26+4
+  90              	.LVL5:
+  91              		.loc 1 83 44 view .LVU23
+  92 003a 4FF0010C 		mov	ip, #1
+  93 003e 03F804C0 		strb	ip, [r3, r4]
+  84:modules/motor/power_control.c ****         motor->message_num = motor_send_num;
+  94              		.loc 1 84 9 is_stmt 1 view .LVU24
+  95              		.loc 1 84 28 is_stmt 0 view .LVU25
+  96 0042 80F8A521 		strb	r2, [r0, #421]
+  97              	.LVL6:
+  85:modules/motor/power_control.c ****         motor->sender_group = motor_grouping;
+  98              		.loc 1 85 9 is_stmt 1 view .LVU26
+  99              		.loc 1 85 29 is_stmt 0 view .LVU27
+ 100 0046 80F8A441 		strb	r4, [r0, #420]
+  86:modules/motor/power_control.c **** 
+  87:modules/motor/power_control.c ****         // 检查是否发生id冲突
+  88:modules/motor/power_control.c ****         for (size_t i = 0; i < idx; ++i)
+ 101              		.loc 1 88 9 is_stmt 1 view .LVU28
+ 102              	.LBB2:
+ 103              		.loc 1 88 14 view .LVU29
+ 104              	.LVL7:
+ 105              		.loc 1 88 21 is_stmt 0 view .LVU30
+ 106 004a 0023     		movs	r3, #0
+ 107              		.loc 1 88 9 view .LVU31
+ 108 004c 0EE0     		b	.L6
+ 109              	.LVL8:
+ 110              	.L22:
+ 111              		.loc 1 88 9 view .LVU32
+ 112              	.LBE2:
+  72:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 1 : 4;
+ 113              		.loc 1 72 28 view .LVU33
+ 114 004e 1A46     		mov	r2, r3
+  73:modules/motor/power_control.c ****         }
+ 115              		.loc 1 73 28 discriminator 1 view .LVU34
+ 116 0050 0124     		movs	r4, #1
+ 117 0052 EEE7     		b	.L5
+ 118              	.LVL9:
+ 119              	.L4:
+  77:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 0 : 3;
+ 120              		.loc 1 77 13 is_stmt 1 view .LVU35
+  77:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 0 : 3;
+ 121              		.loc 1 77 28 is_stmt 0 view .LVU36
+ 122 0054 ACF10502 		sub	r2, ip, #5
+ 123 0058 D2B2     		uxtb	r2, r2
+ 124              	.LVL10:
+  78:modules/motor/power_control.c ****         }
+ 125              		.loc 1 78 13 is_stmt 1 view .LVU37
+  78:modules/motor/power_control.c ****         }
+ 126              		.loc 1 78 28 is_stmt 0 view .LVU38
+ 127 005a 2B4C     		ldr	r4, .L26
+ 128 005c 0D68     		ldr	r5, [r1]
+ 129 005e A542     		cmp	r5, r4
+ 130 0060 01D0     		beq	.L23
+  78:modules/motor/power_control.c ****         }
+ 131              		.loc 1 78 28 discriminator 2 view .LVU39
+ 132 0062 0324     		movs	r4, #3
+ 133 0064 E5E7     		b	.L5
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 5
+
+
+ 134              	.L23:
+  78:modules/motor/power_control.c ****         }
+ 135              		.loc 1 78 28 discriminator 1 view .LVU40
+ 136 0066 0024     		movs	r4, #0
+ 137 0068 E3E7     		b	.L5
+ 138              	.LVL11:
+ 139              	.L7:
+ 140              	.LBB3:
+ 141              		.loc 1 88 37 is_stmt 1 discriminator 2 view .LVU41
+ 142 006a 0133     		adds	r3, r3, #1
+ 143              	.LVL12:
+ 144              	.L6:
+ 145              		.loc 1 88 30 discriminator 1 view .LVU42
+ 146 006c 284A     		ldr	r2, .L26+8
+ 147 006e 1278     		ldrb	r2, [r2]	@ zero_extendqisi2
+ 148 0070 9A42     		cmp	r2, r3
+ 149 0072 47D9     		bls	.L1
+  89:modules/motor/power_control.c ****         {
+  90:modules/motor/power_control.c ****             if (dji_motor_instance[i]->motor_can_instance->can_handle == config->can_handle && dji_
+ 150              		.loc 1 90 13 view .LVU43
+ 151              		.loc 1 90 35 is_stmt 0 view .LVU44
+ 152 0074 274A     		ldr	r2, .L26+12
+ 153 0076 52F82320 		ldr	r2, [r2, r3, lsl #2]
+ 154              		.loc 1 90 38 view .LVU45
+ 155 007a D2F8A021 		ldr	r2, [r2, #416]
+ 156              		.loc 1 90 58 view .LVU46
+ 157 007e D2F800C0 		ldr	ip, [r2]	@ unaligned
+ 158              		.loc 1 90 80 view .LVU47
+ 159 0082 0868     		ldr	r0, [r1]
+ 160              		.loc 1 90 16 view .LVU48
+ 161 0084 8445     		cmp	ip, r0
+ 162 0086 F0D1     		bne	.L7
+ 163              		.loc 1 90 137 discriminator 1 view .LVU49
+ 164 0088 506B     		ldr	r0, [r2, #52]	@ unaligned
+ 165              		.loc 1 90 154 discriminator 1 view .LVU50
+ 166 008a 8A68     		ldr	r2, [r1, #8]
+ 167              		.loc 1 90 93 discriminator 1 view .LVU51
+ 168 008c 9042     		cmp	r0, r2
+ 169 008e ECD1     		bne	.L7
+ 170              	.L8:
+ 171              	.LBE3:
+  91:modules/motor/power_control.c ****             {
+  92:modules/motor/power_control.c ****                 LOGERROR("[dji_motor] ID crash. Check in debug mode, add dji_motor_instance to watc
+  93:modules/motor/power_control.c ****                 uint16_t can_bus = config->can_handle == &hcan1 ? 1 : 2;
+  94:modules/motor/power_control.c ****                 while (1) // 6020的id 1-4和2006/3508的id 5-8会发生冲突(若有注册,即1!5,
+ 172              		.loc 1 94 17 is_stmt 1 view .LVU52
+ 173              		.loc 1 94 23 view .LVU53
+ 174 0090 FEE7     		b	.L8
+ 175              	.LVL13:
+ 176              	.L2:
+  95:modules/motor/power_control.c ****                     LOGERROR("[dji_motor] id [%d], can_bus [%d]", config->rx_id, can_bus);
+  96:modules/motor/power_control.c ****             }
+  97:modules/motor/power_control.c ****         }
+  98:modules/motor/power_control.c ****         break;
+  99:modules/motor/power_control.c **** 
+ 100:modules/motor/power_control.c ****     case GM6020:
+ 101:modules/motor/power_control.c ****         if (motor_id < 4)
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 6
+
+
+ 177              		.loc 1 101 9 view .LVU54
+ 178              		.loc 1 101 12 is_stmt 0 view .LVU55
+ 179 0092 032B     		cmp	r3, #3
+ 180 0094 16D8     		bhi	.L11
+ 102:modules/motor/power_control.c ****         {
+ 103:modules/motor/power_control.c ****             motor_send_num = motor_id;
+ 181              		.loc 1 103 13 is_stmt 1 view .LVU56
+ 182              	.LVL14:
+ 104:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 0 : 3;
+ 183              		.loc 1 104 13 view .LVU57
+ 184              		.loc 1 104 36 is_stmt 0 view .LVU58
+ 185 0096 0C68     		ldr	r4, [r1]
+ 186              		.loc 1 104 28 view .LVU59
+ 187 0098 1B4A     		ldr	r2, .L26
+ 188 009a 9442     		cmp	r4, r2
+ 189 009c 0FD0     		beq	.L24
+ 103:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 0 : 3;
+ 190              		.loc 1 103 28 view .LVU60
+ 191 009e 1A46     		mov	r2, r3
+ 192              		.loc 1 104 28 discriminator 2 view .LVU61
+ 193 00a0 0324     		movs	r4, #3
+ 194              	.LVL15:
+ 195              	.L12:
+ 105:modules/motor/power_control.c ****         }
+ 106:modules/motor/power_control.c ****         else
+ 107:modules/motor/power_control.c ****         {
+ 108:modules/motor/power_control.c ****             motor_send_num = motor_id - 4;
+ 109:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 2 : 5;
+ 110:modules/motor/power_control.c ****         }
+ 111:modules/motor/power_control.c **** 
+ 112:modules/motor/power_control.c ****         config->rx_id = 0x204 + motor_id + 1;   // 把ID+1,进行分组设置
+ 196              		.loc 1 112 9 is_stmt 1 view .LVU62
+ 197              		.loc 1 112 42 is_stmt 0 view .LVU63
+ 198 00a2 03F20523 		addw	r3, r3, #517
+ 199              	.LVL16:
+ 200              		.loc 1 112 23 view .LVU64
+ 201 00a6 8B60     		str	r3, [r1, #8]
+ 113:modules/motor/power_control.c ****         sender_enable_flag[motor_grouping] = 1; // 只要有电机注册到这个分组,置为1;在
+ 202              		.loc 1 113 9 is_stmt 1 view .LVU65
+ 203              		.loc 1 113 44 is_stmt 0 view .LVU66
+ 204 00a8 184B     		ldr	r3, .L26+4
+ 205              	.LVL17:
+ 206              		.loc 1 113 44 view .LVU67
+ 207 00aa 4FF0010C 		mov	ip, #1
+ 208 00ae 03F804C0 		strb	ip, [r3, r4]
+ 114:modules/motor/power_control.c ****         motor->message_num = motor_send_num;
+ 209              		.loc 1 114 9 is_stmt 1 view .LVU68
+ 210              		.loc 1 114 28 is_stmt 0 view .LVU69
+ 211 00b2 80F8A521 		strb	r2, [r0, #421]
+ 212              	.LVL18:
+ 115:modules/motor/power_control.c ****         motor->sender_group = motor_grouping;
+ 213              		.loc 1 115 9 is_stmt 1 view .LVU70
+ 214              		.loc 1 115 29 is_stmt 0 view .LVU71
+ 215 00b6 80F8A441 		strb	r4, [r0, #420]
+ 116:modules/motor/power_control.c **** 
+ 117:modules/motor/power_control.c ****         for (size_t i = 0; i < idx; ++i)
+ 216              		.loc 1 117 9 is_stmt 1 view .LVU72
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 7
+
+
+ 217              	.LBB4:
+ 218              		.loc 1 117 14 view .LVU73
+ 219              	.LVL19:
+ 220              		.loc 1 117 21 is_stmt 0 view .LVU74
+ 221 00ba 0023     		movs	r3, #0
+ 222              		.loc 1 117 9 view .LVU75
+ 223 00bc 0EE0     		b	.L13
+ 224              	.LVL20:
+ 225              	.L24:
+ 226              		.loc 1 117 9 view .LVU76
+ 227              	.LBE4:
+ 103:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 0 : 3;
+ 228              		.loc 1 103 28 view .LVU77
+ 229 00be 1A46     		mov	r2, r3
+ 104:modules/motor/power_control.c ****         }
+ 230              		.loc 1 104 28 discriminator 1 view .LVU78
+ 231 00c0 0024     		movs	r4, #0
+ 232 00c2 EEE7     		b	.L12
+ 233              	.LVL21:
+ 234              	.L11:
+ 108:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 2 : 5;
+ 235              		.loc 1 108 13 is_stmt 1 view .LVU79
+ 108:modules/motor/power_control.c ****             motor_grouping = config->can_handle == &hcan1 ? 2 : 5;
+ 236              		.loc 1 108 28 is_stmt 0 view .LVU80
+ 237 00c4 ACF10502 		sub	r2, ip, #5
+ 238 00c8 D2B2     		uxtb	r2, r2
+ 239              	.LVL22:
+ 109:modules/motor/power_control.c ****         }
+ 240              		.loc 1 109 13 is_stmt 1 view .LVU81
+ 109:modules/motor/power_control.c ****         }
+ 241              		.loc 1 109 28 is_stmt 0 view .LVU82
+ 242 00ca 0F4C     		ldr	r4, .L26
+ 243 00cc 0D68     		ldr	r5, [r1]
+ 244 00ce A542     		cmp	r5, r4
+ 245 00d0 01D0     		beq	.L25
+ 109:modules/motor/power_control.c ****         }
+ 246              		.loc 1 109 28 discriminator 2 view .LVU83
+ 247 00d2 0524     		movs	r4, #5
+ 248 00d4 E5E7     		b	.L12
+ 249              	.L25:
+ 109:modules/motor/power_control.c ****         }
+ 250              		.loc 1 109 28 discriminator 1 view .LVU84
+ 251 00d6 0224     		movs	r4, #2
+ 252 00d8 E3E7     		b	.L12
+ 253              	.LVL23:
+ 254              	.L14:
+ 255              	.LBB5:
+ 256              		.loc 1 117 37 is_stmt 1 discriminator 2 view .LVU85
+ 257 00da 0133     		adds	r3, r3, #1
+ 258              	.LVL24:
+ 259              	.L13:
+ 260              		.loc 1 117 30 discriminator 1 view .LVU86
+ 261 00dc 0C4A     		ldr	r2, .L26+8
+ 262 00de 1278     		ldrb	r2, [r2]	@ zero_extendqisi2
+ 263 00e0 9A42     		cmp	r2, r3
+ 264 00e2 0FD9     		bls	.L1
+ 118:modules/motor/power_control.c ****         {
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 8
+
+
+ 119:modules/motor/power_control.c ****             if (dji_motor_instance[i]->motor_can_instance->can_handle == config->can_handle && dji_
+ 265              		.loc 1 119 13 view .LVU87
+ 266              		.loc 1 119 35 is_stmt 0 view .LVU88
+ 267 00e4 0B4A     		ldr	r2, .L26+12
+ 268 00e6 52F82320 		ldr	r2, [r2, r3, lsl #2]
+ 269              		.loc 1 119 38 view .LVU89
+ 270 00ea D2F8A021 		ldr	r2, [r2, #416]
+ 271              		.loc 1 119 58 view .LVU90
+ 272 00ee D2F800C0 		ldr	ip, [r2]	@ unaligned
+ 273              		.loc 1 119 80 view .LVU91
+ 274 00f2 0868     		ldr	r0, [r1]
+ 275              		.loc 1 119 16 view .LVU92
+ 276 00f4 8445     		cmp	ip, r0
+ 277 00f6 F0D1     		bne	.L14
+ 278              		.loc 1 119 137 discriminator 1 view .LVU93
+ 279 00f8 506B     		ldr	r0, [r2, #52]	@ unaligned
+ 280              		.loc 1 119 154 discriminator 1 view .LVU94
+ 281 00fa 8A68     		ldr	r2, [r1, #8]
+ 282              		.loc 1 119 93 discriminator 1 view .LVU95
+ 283 00fc 9042     		cmp	r0, r2
+ 284 00fe ECD1     		bne	.L14
+ 285              	.L15:
+ 286              	.LBE5:
+ 120:modules/motor/power_control.c ****             {
+ 121:modules/motor/power_control.c ****                 LOGERROR("[dji_motor] ID crash. Check in debug mode, add dji_motor_instance to watc
+ 122:modules/motor/power_control.c ****                 uint16_t can_bus = config->can_handle == &hcan1 ? 1 : 2;
+ 123:modules/motor/power_control.c ****                 while (1) // 6020的id 1-4和2006/3508的id 5-8会发生冲突(若有注册,即1!5,
+ 287              		.loc 1 123 17 is_stmt 1 view .LVU96
+ 288              		.loc 1 123 23 view .LVU97
+ 289 0100 FEE7     		b	.L15
+ 290              	.LVL25:
+ 291              	.L3:
+ 124:modules/motor/power_control.c ****                     LOGERROR("[dji_motor] id [%d], can_bus [%d]", config->rx_id, can_bus);
+ 125:modules/motor/power_control.c ****             }
+ 126:modules/motor/power_control.c ****         }
+ 127:modules/motor/power_control.c ****         break;
+ 128:modules/motor/power_control.c **** 
+ 129:modules/motor/power_control.c ****     default: // other motors should not be registered here
+ 130:modules/motor/power_control.c ****         while (1)
+ 292              		.loc 1 130 9 view .LVU98
+ 293              		.loc 1 130 15 view .LVU99
+ 294 0102 FEE7     		b	.L3
+ 295              	.LVL26:
+ 296              	.L1:
+ 131:modules/motor/power_control.c ****             LOGERROR("[dji_motor]You must not register other motors using the API of DJI motor."); 
+ 132:modules/motor/power_control.c ****     }
+ 133:modules/motor/power_control.c **** }
+ 297              		.loc 1 133 1 is_stmt 0 view .LVU100
+ 298 0104 30BC     		pop	{r4, r5}
+ 299              	.LCFI1:
+ 300              		.cfi_restore 5
+ 301              		.cfi_restore 4
+ 302              		.cfi_def_cfa_offset 0
+ 303              	.LVL27:
+ 304              		.loc 1 133 1 view .LVU101
+ 305 0106 7047     		bx	lr
+ 306              	.L27:
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 9
+
+
+ 307              		.align	2
+ 308              	.L26:
+ 309 0108 00000000 		.word	hcan1
+ 310 010c 00000000 		.word	sender_enable_flag
+ 311 0110 00000000 		.word	idx
+ 312 0114 00000000 		.word	dji_motor_instance
+ 313              		.cfi_endproc
+ 314              	.LFE272:
+ 316              		.section	.text.DJIMotorLostCallback,"ax",%progbits
+ 317              		.align	1
+ 318              		.syntax unified
+ 319              		.thumb
+ 320              		.thumb_func
+ 322              	DJIMotorLostCallback:
+ 323              	.LVL28:
+ 324              	.LFB274:
+ 134:modules/motor/power_control.c **** 
+ 135:modules/motor/power_control.c **** /**
+ 136:modules/motor/power_control.c ****  * @todo  是否可以简化多圈角度的计算？
+ 137:modules/motor/power_control.c ****  * @brief 根据返回的can_instance对反馈报文进行解析
+ 138:modules/motor/power_control.c ****  *
+ 139:modules/motor/power_control.c ****  * @param _instance 收到数据的instance,通过遍历与所有电机进行对比以选择正确�
+ 140:modules/motor/power_control.c ****  */
+ 141:modules/motor/power_control.c **** static void DecodeDJIMotor(CANInstance *_instance)
+ 142:modules/motor/power_control.c **** {
+ 143:modules/motor/power_control.c ****     // 这里对can instance的id进行了强制转换,从而获得电机的instance实例地址
+ 144:modules/motor/power_control.c ****     // _instance指针指向的id是对应电机instance的地址,通过强制转换为电机instan
+ 145:modules/motor/power_control.c ****     uint8_t *rxbuff = _instance->rx_buff;
+ 146:modules/motor/power_control.c ****     DJIMotorInstance *motor = (DJIMotorInstance *)_instance->id;
+ 147:modules/motor/power_control.c ****     DJI_Motor_Measure_s *measure = &motor->measure; // measure要多次使用,保存指针减小访
+ 148:modules/motor/power_control.c **** 
+ 149:modules/motor/power_control.c ****     DaemonReload(motor->daemon);
+ 150:modules/motor/power_control.c ****     motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
+ 151:modules/motor/power_control.c **** 
+ 152:modules/motor/power_control.c ****     // 解析数据并对电流和速度进行滤波,电机的反馈报文具体格式见电机说�
+ 153:modules/motor/power_control.c ****     measure->last_ecd = measure->ecd;
+ 154:modules/motor/power_control.c ****     measure->ecd = ((uint16_t)rxbuff[0]) << 8 | rxbuff[1];
+ 155:modules/motor/power_control.c ****     measure->angle_single_round = ECD_ANGLE_COEF_DJI * (float)measure->ecd;
+ 156:modules/motor/power_control.c ****     measure->speed_aps = (1.0f - SPEED_SMOOTH_COEF) * measure->speed_aps +
+ 157:modules/motor/power_control.c ****                          RPM_2_ANGLE_PER_SEC * SPEED_SMOOTH_COEF * (float)((int16_t)(rxbuff[2] << 8
+ 158:modules/motor/power_control.c ****     measure->real_current = (1.0f - CURRENT_SMOOTH_COEF) * measure->real_current +
+ 159:modules/motor/power_control.c ****                             CURRENT_SMOOTH_COEF * (float)((int16_t)(rxbuff[4] << 8 | rxbuff[5]));
+ 160:modules/motor/power_control.c ****     measure->temperature = rxbuff[6];
+ 161:modules/motor/power_control.c **** 
+ 162:modules/motor/power_control.c ****     // 多圈角度计算,前提是假设两次采样间电机转过的角度小于180°,自己画�
+ 163:modules/motor/power_control.c ****     if (measure->ecd - measure->last_ecd > 4096)
+ 164:modules/motor/power_control.c ****         measure->total_round--;
+ 165:modules/motor/power_control.c ****     else if (measure->ecd - measure->last_ecd < -4096)
+ 166:modules/motor/power_control.c ****         measure->total_round++;
+ 167:modules/motor/power_control.c ****     measure->total_angle = measure->total_round * 360 + measure->angle_single_round;
+ 168:modules/motor/power_control.c **** }
+ 169:modules/motor/power_control.c **** 
+ 170:modules/motor/power_control.c **** static void DJIMotorLostCallback(void *motor_ptr)
+ 171:modules/motor/power_control.c **** {
+ 325              		.loc 1 171 1 is_stmt 1 view -0
+ 326              		.cfi_startproc
+ 327              		@ args = 0, pretend = 0, frame = 0
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 10
+
+
+ 328              		@ frame_needed = 0, uses_anonymous_args = 0
+ 329              		@ link register save eliminated.
+ 172:modules/motor/power_control.c ****     DJIMotorInstance *motor = (DJIMotorInstance *)motor_ptr;
+ 330              		.loc 1 172 5 view .LVU103
+ 173:modules/motor/power_control.c ****     uint16_t can_bus = motor->motor_can_instance->can_handle == &hcan1 ? 1 : 2;
+ 331              		.loc 1 173 5 view .LVU104
+ 174:modules/motor/power_control.c ****     LOGWARNING("[dji_motor] Motor lost, can bus [%d] , id [%d]", can_bus, motor->motor_can_instance
+ 332              		.loc 1 174 108 view .LVU105
+ 175:modules/motor/power_control.c **** }
+ 333              		.loc 1 175 1 is_stmt 0 view .LVU106
+ 334 0000 7047     		bx	lr
+ 335              		.cfi_endproc
+ 336              	.LFE274:
+ 338              		.section	.text.DecodeDJIMotor,"ax",%progbits
+ 339              		.align	1
+ 340              		.syntax unified
+ 341              		.thumb
+ 342              		.thumb_func
+ 344              	DecodeDJIMotor:
+ 345              	.LVL29:
+ 346              	.LFB273:
+ 142:modules/motor/power_control.c ****     // 这里对can instance的id进行了强制转换,从而获得电机的instance实例地址
+ 347              		.loc 1 142 1 is_stmt 1 view -0
+ 348              		.cfi_startproc
+ 349              		@ args = 0, pretend = 0, frame = 0
+ 350              		@ frame_needed = 0, uses_anonymous_args = 0
+ 142:modules/motor/power_control.c ****     // 这里对can instance的id进行了强制转换,从而获得电机的instance实例地址
+ 351              		.loc 1 142 1 is_stmt 0 view .LVU108
+ 352 0000 38B5     		push	{r3, r4, r5, lr}
+ 353              	.LCFI2:
+ 354              		.cfi_def_cfa_offset 16
+ 355              		.cfi_offset 3, -16
+ 356              		.cfi_offset 4, -12
+ 357              		.cfi_offset 5, -8
+ 358              		.cfi_offset 14, -4
+ 359 0002 0546     		mov	r5, r0
+ 145:modules/motor/power_control.c ****     DJIMotorInstance *motor = (DJIMotorInstance *)_instance->id;
+ 360              		.loc 1 145 5 is_stmt 1 view .LVU109
+ 361              	.LVL30:
+ 146:modules/motor/power_control.c ****     DJI_Motor_Measure_s *measure = &motor->measure; // measure要多次使用,保存指针减小访
+ 362              		.loc 1 146 5 view .LVU110
+ 146:modules/motor/power_control.c ****     DJI_Motor_Measure_s *measure = &motor->measure; // measure要多次使用,保存指针减小访
+ 363              		.loc 1 146 23 is_stmt 0 view .LVU111
+ 364 0004 D0F83D40 		ldr	r4, [r0, #61]	@ unaligned
+ 365              	.LVL31:
+ 147:modules/motor/power_control.c **** 
+ 366              		.loc 1 147 5 is_stmt 1 view .LVU112
+ 149:modules/motor/power_control.c ****     motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
+ 367              		.loc 1 149 5 view .LVU113
+ 368 0008 D4F8A801 		ldr	r0, [r4, #424]
+ 369              	.LVL32:
+ 149:modules/motor/power_control.c ****     motor->dt = DWT_GetDeltaT(&motor->feed_cnt);
+ 370              		.loc 1 149 5 is_stmt 0 view .LVU114
+ 371 000c FFF7FEFF 		bl	DaemonReload
+ 372              	.LVL33:
+ 150:modules/motor/power_control.c **** 
+ 373              		.loc 1 150 5 is_stmt 1 view .LVU115
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 11
+
+
+ 150:modules/motor/power_control.c **** 
+ 374              		.loc 1 150 17 is_stmt 0 view .LVU116
+ 375 0010 04F5D670 		add	r0, r4, #428
+ 376 0014 FFF7FEFF 		bl	DWT_GetDeltaT
+ 377              	.LVL34:
+ 150:modules/motor/power_control.c **** 
+ 378              		.loc 1 150 15 discriminator 1 view .LVU117
+ 379 0018 84ED6C0A 		vstr.32	s0, [r4, #432]
+ 153:modules/motor/power_control.c ****     measure->ecd = ((uint16_t)rxbuff[0]) << 8 | rxbuff[1];
+ 380              		.loc 1 153 5 is_stmt 1 view .LVU118
+ 153:modules/motor/power_control.c ****     measure->ecd = ((uint16_t)rxbuff[0]) << 8 | rxbuff[1];
+ 381              		.loc 1 153 32 is_stmt 0 view .LVU119
+ 382 001c 6188     		ldrh	r1, [r4, #2]
+ 153:modules/motor/power_control.c ****     measure->ecd = ((uint16_t)rxbuff[0]) << 8 | rxbuff[1];
+ 383              		.loc 1 153 23 view .LVU120
+ 384 001e 2180     		strh	r1, [r4]	@ movhi
+ 154:modules/motor/power_control.c ****     measure->angle_single_round = ECD_ANGLE_COEF_DJI * (float)measure->ecd;
+ 385              		.loc 1 154 5 is_stmt 1 view .LVU121
+ 154:modules/motor/power_control.c ****     measure->angle_single_round = ECD_ANGLE_COEF_DJI * (float)measure->ecd;
+ 386              		.loc 1 154 37 is_stmt 0 view .LVU122
+ 387 0020 95F82C30 		ldrb	r3, [r5, #44]	@ zero_extendqisi2
+ 154:modules/motor/power_control.c ****     measure->angle_single_round = ECD_ANGLE_COEF_DJI * (float)measure->ecd;
+ 388              		.loc 1 154 55 view .LVU123
+ 389 0024 95F82D20 		ldrb	r2, [r5, #45]	@ zero_extendqisi2
+ 154:modules/motor/power_control.c ****     measure->angle_single_round = ECD_ANGLE_COEF_DJI * (float)measure->ecd;
+ 390              		.loc 1 154 47 view .LVU124
+ 391 0028 42EA0322 		orr	r2, r2, r3, lsl #8
+ 154:modules/motor/power_control.c ****     measure->angle_single_round = ECD_ANGLE_COEF_DJI * (float)measure->ecd;
+ 392              		.loc 1 154 18 view .LVU125
+ 393 002c 6280     		strh	r2, [r4, #2]	@ movhi
+ 155:modules/motor/power_control.c ****     measure->speed_aps = (1.0f - SPEED_SMOOTH_COEF) * measure->speed_aps +
+ 394              		.loc 1 155 5 is_stmt 1 view .LVU126
+ 155:modules/motor/power_control.c ****     measure->speed_aps = (1.0f - SPEED_SMOOTH_COEF) * measure->speed_aps +
+ 395              		.loc 1 155 56 is_stmt 0 view .LVU127
+ 396 002e 07EE902A 		vmov	s15, r2	@ int
+ 397 0032 F8EE676A 		vcvt.f32.u32	s13, s15
+ 155:modules/motor/power_control.c ****     measure->speed_aps = (1.0f - SPEED_SMOOTH_COEF) * measure->speed_aps +
+ 398              		.loc 1 155 54 view .LVU128
+ 399 0036 DFED2F7A 		vldr.32	s15, .L33
+ 400 003a 66EEA76A 		vmul.f32	s13, s13, s15
+ 155:modules/motor/power_control.c ****     measure->speed_aps = (1.0f - SPEED_SMOOTH_COEF) * measure->speed_aps +
+ 401              		.loc 1 155 33 view .LVU129
+ 402 003e C4ED016A 		vstr.32	s13, [r4, #4]
+ 156:modules/motor/power_control.c ****                          RPM_2_ANGLE_PER_SEC * SPEED_SMOOTH_COEF * (float)((int16_t)(rxbuff[2] << 8
+ 403              		.loc 1 156 5 is_stmt 1 view .LVU130
+ 156:modules/motor/power_control.c ****                          RPM_2_ANGLE_PER_SEC * SPEED_SMOOTH_COEF * (float)((int16_t)(rxbuff[2] << 8
+ 404              		.loc 1 156 62 is_stmt 0 view .LVU131
+ 405 0042 D4ED027A 		vldr.32	s15, [r4, #8]
+ 156:modules/motor/power_control.c ****                          RPM_2_ANGLE_PER_SEC * SPEED_SMOOTH_COEF * (float)((int16_t)(rxbuff[2] << 8
+ 406              		.loc 1 156 53 view .LVU132
+ 407 0046 9FED2C7A 		vldr.32	s14, .L33+4
+ 408 004a 27EE877A 		vmul.f32	s14, s15, s14
+ 157:modules/motor/power_control.c ****     measure->real_current = (1.0f - CURRENT_SMOOTH_COEF) * measure->real_current +
+ 409              		.loc 1 157 92 view .LVU133
+ 410 004e 95F82E00 		ldrb	r0, [r5, #46]	@ zero_extendqisi2
+ 157:modules/motor/power_control.c ****     measure->real_current = (1.0f - CURRENT_SMOOTH_COEF) * measure->real_current +
+ 411              		.loc 1 157 109 view .LVU134
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 12
+
+
+ 412 0052 95F82F30 		ldrb	r3, [r5, #47]	@ zero_extendqisi2
+ 157:modules/motor/power_control.c ****     measure->real_current = (1.0f - CURRENT_SMOOTH_COEF) * measure->real_current +
+ 413              		.loc 1 157 76 view .LVU135
+ 414 0056 43EA0023 		orr	r3, r3, r0, lsl #8
+ 415 005a 1BB2     		sxth	r3, r3
+ 416 005c 07EE903A 		vmov	s15, r3	@ int
+ 157:modules/motor/power_control.c ****     measure->real_current = (1.0f - CURRENT_SMOOTH_COEF) * measure->real_current +
+ 417              		.loc 1 157 68 view .LVU136
+ 418 0060 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 157:modules/motor/power_control.c ****     measure->real_current = (1.0f - CURRENT_SMOOTH_COEF) * measure->real_current +
+ 419              		.loc 1 157 66 view .LVU137
+ 420 0064 9FED256A 		vldr.32	s12, .L33+8
+ 421 0068 67EE867A 		vmul.f32	s15, s15, s12
+ 156:modules/motor/power_control.c ****                          RPM_2_ANGLE_PER_SEC * SPEED_SMOOTH_COEF * (float)((int16_t)(rxbuff[2] << 8
+ 422              		.loc 1 156 74 view .LVU138
+ 423 006c 77EE277A 		vadd.f32	s15, s14, s15
+ 156:modules/motor/power_control.c ****                          RPM_2_ANGLE_PER_SEC * SPEED_SMOOTH_COEF * (float)((int16_t)(rxbuff[2] << 8
+ 424              		.loc 1 156 24 view .LVU139
+ 425 0070 C4ED027A 		vstr.32	s15, [r4, #8]
+ 158:modules/motor/power_control.c ****                             CURRENT_SMOOTH_COEF * (float)((int16_t)(rxbuff[4] << 8 | rxbuff[5]));
+ 426              		.loc 1 158 5 is_stmt 1 view .LVU140
+ 158:modules/motor/power_control.c ****                             CURRENT_SMOOTH_COEF * (float)((int16_t)(rxbuff[4] << 8 | rxbuff[5]));
+ 427              		.loc 1 158 67 is_stmt 0 view .LVU141
+ 428 0074 B4F90C30 		ldrsh	r3, [r4, #12]
+ 429 0078 07EE903A 		vmov	s15, r3	@ int
+ 158:modules/motor/power_control.c ****                             CURRENT_SMOOTH_COEF * (float)((int16_t)(rxbuff[4] << 8 | rxbuff[5]));
+ 430              		.loc 1 158 58 view .LVU142
+ 431 007c F8EEE77A 		vcvt.f32.s32	s15, s15
+ 432 0080 9FED1F7A 		vldr.32	s14, .L33+12
+ 433 0084 67EE877A 		vmul.f32	s15, s15, s14
+ 159:modules/motor/power_control.c ****     measure->temperature = rxbuff[6];
+ 434              		.loc 1 159 75 view .LVU143
+ 435 0088 95F83000 		ldrb	r0, [r5, #48]	@ zero_extendqisi2
+ 159:modules/motor/power_control.c ****     measure->temperature = rxbuff[6];
+ 436              		.loc 1 159 92 view .LVU144
+ 437 008c 95F83130 		ldrb	r3, [r5, #49]	@ zero_extendqisi2
+ 159:modules/motor/power_control.c ****     measure->temperature = rxbuff[6];
+ 438              		.loc 1 159 59 view .LVU145
+ 439 0090 43EA0023 		orr	r3, r3, r0, lsl #8
+ 440 0094 1BB2     		sxth	r3, r3
+ 441 0096 07EE103A 		vmov	s14, r3	@ int
+ 159:modules/motor/power_control.c ****     measure->temperature = rxbuff[6];
+ 442              		.loc 1 159 51 view .LVU146
+ 443 009a B8EEC77A 		vcvt.f32.s32	s14, s14
+ 159:modules/motor/power_control.c ****     measure->temperature = rxbuff[6];
+ 444              		.loc 1 159 49 view .LVU147
+ 445 009e 9FED196A 		vldr.32	s12, .L33+16
+ 446 00a2 27EE067A 		vmul.f32	s14, s14, s12
+ 158:modules/motor/power_control.c ****                             CURRENT_SMOOTH_COEF * (float)((int16_t)(rxbuff[4] << 8 | rxbuff[5]));
+ 447              		.loc 1 158 82 view .LVU148
+ 448 00a6 77EE877A 		vadd.f32	s15, s15, s14
+ 158:modules/motor/power_control.c ****                             CURRENT_SMOOTH_COEF * (float)((int16_t)(rxbuff[4] << 8 | rxbuff[5]));
+ 449              		.loc 1 158 27 view .LVU149
+ 450 00aa FDEEE77A 		vcvt.s32.f32	s15, s15
+ 451 00ae 17EE903A 		vmov	r3, s15	@ int
+ 452 00b2 A381     		strh	r3, [r4, #12]	@ movhi
+ 160:modules/motor/power_control.c **** 
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 13
+
+
+ 453              		.loc 1 160 5 is_stmt 1 view .LVU150
+ 160:modules/motor/power_control.c **** 
+ 454              		.loc 1 160 26 is_stmt 0 view .LVU151
+ 455 00b4 95F83230 		ldrb	r3, [r5, #50]	@ zero_extendqisi2
+ 456 00b8 A373     		strb	r3, [r4, #14]
+ 163:modules/motor/power_control.c ****         measure->total_round--;
+ 457              		.loc 1 163 5 is_stmt 1 view .LVU152
+ 163:modules/motor/power_control.c ****         measure->total_round--;
+ 458              		.loc 1 163 22 is_stmt 0 view .LVU153
+ 459 00ba 521A     		subs	r2, r2, r1
+ 163:modules/motor/power_control.c ****         measure->total_round--;
+ 460              		.loc 1 163 8 view .LVU154
+ 461 00bc B2F5805F 		cmp	r2, #4096
+ 462 00c0 10DD     		ble	.L30
+ 164:modules/motor/power_control.c ****     else if (measure->ecd - measure->last_ecd < -4096)
+ 463              		.loc 1 164 9 is_stmt 1 view .LVU155
+ 164:modules/motor/power_control.c ****     else if (measure->ecd - measure->last_ecd < -4096)
+ 464              		.loc 1 164 16 is_stmt 0 view .LVU156
+ 465 00c2 6369     		ldr	r3, [r4, #20]
+ 164:modules/motor/power_control.c ****     else if (measure->ecd - measure->last_ecd < -4096)
+ 466              		.loc 1 164 29 view .LVU157
+ 467 00c4 013B     		subs	r3, r3, #1
+ 468 00c6 6361     		str	r3, [r4, #20]
+ 469              	.L31:
+ 167:modules/motor/power_control.c **** }
+ 470              		.loc 1 167 5 is_stmt 1 view .LVU158
+ 167:modules/motor/power_control.c **** }
+ 471              		.loc 1 167 35 is_stmt 0 view .LVU159
+ 472 00c8 6369     		ldr	r3, [r4, #20]
+ 167:modules/motor/power_control.c **** }
+ 473              		.loc 1 167 49 view .LVU160
+ 474 00ca 4FF4B472 		mov	r2, #360
+ 475 00ce 02FB03F3 		mul	r3, r2, r3
+ 476 00d2 07EE903A 		vmov	s15, r3	@ int
+ 167:modules/motor/power_control.c **** }
+ 477              		.loc 1 167 55 view .LVU161
+ 478 00d6 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 479 00da 77EEA67A 		vadd.f32	s15, s15, s13
+ 167:modules/motor/power_control.c **** }
+ 480              		.loc 1 167 26 view .LVU162
+ 481 00de C4ED047A 		vstr.32	s15, [r4, #16]
+ 168:modules/motor/power_control.c **** 
+ 482              		.loc 1 168 1 view .LVU163
+ 483 00e2 38BD     		pop	{r3, r4, r5, pc}
+ 484              	.LVL35:
+ 485              	.L30:
+ 165:modules/motor/power_control.c ****         measure->total_round++;
+ 486              		.loc 1 165 10 is_stmt 1 view .LVU164
+ 165:modules/motor/power_control.c ****         measure->total_round++;
+ 487              		.loc 1 165 13 is_stmt 0 view .LVU165
+ 488 00e4 12F5805F 		cmn	r2, #4096
+ 489 00e8 EEDA     		bge	.L31
+ 166:modules/motor/power_control.c ****     measure->total_angle = measure->total_round * 360 + measure->angle_single_round;
+ 490              		.loc 1 166 9 is_stmt 1 view .LVU166
+ 166:modules/motor/power_control.c ****     measure->total_angle = measure->total_round * 360 + measure->angle_single_round;
+ 491              		.loc 1 166 16 is_stmt 0 view .LVU167
+ 492 00ea 6369     		ldr	r3, [r4, #20]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 14
+
+
+ 166:modules/motor/power_control.c ****     measure->total_angle = measure->total_round * 360 + measure->angle_single_round;
+ 493              		.loc 1 166 29 view .LVU168
+ 494 00ec 0133     		adds	r3, r3, #1
+ 495 00ee 6361     		str	r3, [r4, #20]
+ 496 00f0 EAE7     		b	.L31
+ 497              	.L34:
+ 498 00f2 00BF     		.align	2
+ 499              	.L33:
+ 500 00f4 ACFF333D 		.word	1026817964
+ 501 00f8 9899193E 		.word	1041865112
+ 502 00fc 3433A340 		.word	1084437300
+ 503 0100 D0CCCC3D 		.word	1036831952
+ 504 0104 6666663F 		.word	1063675494
+ 505              		.cfi_endproc
+ 506              	.LFE273:
+ 508              		.section	.text.SetPowerLimit,"ax",%progbits
+ 509              		.align	1
+ 510              		.global	SetPowerLimit
+ 511              		.syntax unified
+ 512              		.thumb
+ 513              		.thumb_func
+ 515              	SetPowerLimit:
+ 516              	.LVL36:
+ 517              	.LFB271:
+  52:modules/motor/power_control.c ****     chassis_max_power = power_limit;
+ 518              		.loc 1 52 1 is_stmt 1 view -0
+ 519              		.cfi_startproc
+ 520              		@ args = 0, pretend = 0, frame = 0
+ 521              		@ frame_needed = 0, uses_anonymous_args = 0
+ 522              		@ link register save eliminated.
+  53:modules/motor/power_control.c **** }
+ 523              		.loc 1 53 5 view .LVU170
+  53:modules/motor/power_control.c **** }
+ 524              		.loc 1 53 23 is_stmt 0 view .LVU171
+ 525 0000 014B     		ldr	r3, .L36
+ 526 0002 83ED000A 		vstr.32	s0, [r3]
+  54:modules/motor/power_control.c **** 
+ 527              		.loc 1 54 1 view .LVU172
+ 528 0006 7047     		bx	lr
+ 529              	.L37:
+ 530              		.align	2
+ 531              	.L36:
+ 532 0008 00000000 		.word	chassis_max_power
+ 533              		.cfi_endproc
+ 534              	.LFE271:
+ 536              		.section	.text.PowerControlInit,"ax",%progbits
+ 537              		.align	1
+ 538              		.global	PowerControlInit
+ 539              		.syntax unified
+ 540              		.thumb
+ 541              		.thumb_func
+ 543              	PowerControlInit:
+ 544              	.LVL37:
+ 545              	.LFB275:
+ 176:modules/motor/power_control.c **** 
+ 177:modules/motor/power_control.c **** // 电机初始化,返回一个电机实例
+ 178:modules/motor/power_control.c **** DJIMotorInstance *PowerControlInit(Motor_Init_Config_s *config)
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 15
+
+
+ 179:modules/motor/power_control.c **** {
+ 546              		.loc 1 179 1 is_stmt 1 view -0
+ 547              		.cfi_startproc
+ 548              		@ args = 0, pretend = 0, frame = 16
+ 549              		@ frame_needed = 0, uses_anonymous_args = 0
+ 550              		.loc 1 179 1 is_stmt 0 view .LVU174
+ 551 0000 70B5     		push	{r4, r5, r6, lr}
+ 552              	.LCFI3:
+ 553              		.cfi_def_cfa_offset 16
+ 554              		.cfi_offset 4, -16
+ 555              		.cfi_offset 5, -12
+ 556              		.cfi_offset 6, -8
+ 557              		.cfi_offset 14, -4
+ 558 0002 84B0     		sub	sp, sp, #16
+ 559              	.LCFI4:
+ 560              		.cfi_def_cfa_offset 32
+ 561 0004 0546     		mov	r5, r0
+ 180:modules/motor/power_control.c **** 
+ 181:modules/motor/power_control.c ****     DJIMotorInstance *instance = (DJIMotorInstance *)malloc(sizeof(DJIMotorInstance));
+ 562              		.loc 1 181 5 is_stmt 1 view .LVU175
+ 563              		.loc 1 181 54 is_stmt 0 view .LVU176
+ 564 0006 4FF4DC70 		mov	r0, #440
+ 565              	.LVL38:
+ 566              		.loc 1 181 54 view .LVU177
+ 567 000a FFF7FEFF 		bl	malloc
+ 568              	.LVL39:
+ 569 000e 0446     		mov	r4, r0
+ 570              	.LVL40:
+ 182:modules/motor/power_control.c ****     memset(instance, 0, sizeof(DJIMotorInstance));
+ 571              		.loc 1 182 5 is_stmt 1 view .LVU178
+ 572 0010 4FF4DC72 		mov	r2, #440
+ 573 0014 0021     		movs	r1, #0
+ 574 0016 FFF7FEFF 		bl	memset
+ 575              	.LVL41:
+ 183:modules/motor/power_control.c **** 
+ 184:modules/motor/power_control.c ****     // motor basic setting 电机基本设置
+ 185:modules/motor/power_control.c ****     instance->motor_type = config->motor_type;                         // 6020 or 2006 or 3508
+ 576              		.loc 1 185 5 view .LVU179
+ 577              		.loc 1 185 34 is_stmt 0 view .LVU180
+ 578 001a 95F89B30 		ldrb	r3, [r5, #155]	@ zero_extendqisi2
+ 579              		.loc 1 185 26 view .LVU181
+ 580 001e 84F8A631 		strb	r3, [r4, #422]
+ 186:modules/motor/power_control.c ****     instance->motor_settings = config->controller_setting_init_config; // 正反转,闭环类型等
+ 581              		.loc 1 186 5 is_stmt 1 view .LVU182
+ 582              		.loc 1 186 30 is_stmt 0 view .LVU183
+ 583 0022 05F19403 		add	r3, r5, #148
+ 584 0026 93E80300 		ldm	r3, {r0, r1}
+ 585 002a A061     		str	r0, [r4, #24]
+ 586 002c A183     		strh	r1, [r4, #28]	@ movhi
+ 587 002e 090C     		lsrs	r1, r1, #16
+ 588 0030 A177     		strb	r1, [r4, #30]
+ 187:modules/motor/power_control.c **** 
+ 188:modules/motor/power_control.c ****     // motor controller init 电机控制器初始化
+ 189:modules/motor/power_control.c ****     PIDInit(&instance->motor_controller.current_PID, &config->controller_param_init_config.current_
+ 589              		.loc 1 189 5 is_stmt 1 view .LVU184
+ 590 0032 05F11001 		add	r1, r5, #16
+ 591 0036 04F13000 		add	r0, r4, #48
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 16
+
+
+ 592 003a FFF7FEFF 		bl	PIDInit
+ 593              	.LVL42:
+ 190:modules/motor/power_control.c ****     PIDInit(&instance->motor_controller.speed_PID, &config->controller_param_init_config.speed_PID)
+ 594              		.loc 1 190 5 view .LVU185
+ 595 003e 05F13C01 		add	r1, r5, #60
+ 596 0042 04F1A800 		add	r0, r4, #168
+ 597 0046 FFF7FEFF 		bl	PIDInit
+ 598              	.LVL43:
+ 191:modules/motor/power_control.c ****     PIDInit(&instance->motor_controller.angle_PID, &config->controller_param_init_config.angle_PID)
+ 599              		.loc 1 191 5 view .LVU186
+ 600 004a 05F16801 		add	r1, r5, #104
+ 601 004e 04F59070 		add	r0, r4, #288
+ 602 0052 FFF7FEFF 		bl	PIDInit
+ 603              	.LVL44:
+ 192:modules/motor/power_control.c ****     instance->motor_controller.other_angle_feedback_ptr = config->controller_param_init_config.othe
+ 604              		.loc 1 192 5 view .LVU187
+ 605              		.loc 1 192 95 is_stmt 0 view .LVU188
+ 606 0056 2B68     		ldr	r3, [r5]
+ 607              		.loc 1 192 57 view .LVU189
+ 608 0058 2362     		str	r3, [r4, #32]
+ 193:modules/motor/power_control.c ****     instance->motor_controller.other_speed_feedback_ptr = config->controller_param_init_config.othe
+ 609              		.loc 1 193 5 is_stmt 1 view .LVU190
+ 610              		.loc 1 193 95 is_stmt 0 view .LVU191
+ 611 005a 6B68     		ldr	r3, [r5, #4]
+ 612              		.loc 1 193 57 view .LVU192
+ 613 005c 6362     		str	r3, [r4, #36]
+ 194:modules/motor/power_control.c ****     instance->motor_controller.current_feedforward_ptr = config->controller_param_init_config.curre
+ 614              		.loc 1 194 5 is_stmt 1 view .LVU193
+ 615              		.loc 1 194 94 is_stmt 0 view .LVU194
+ 616 005e EB68     		ldr	r3, [r5, #12]
+ 617              		.loc 1 194 56 view .LVU195
+ 618 0060 E362     		str	r3, [r4, #44]
+ 195:modules/motor/power_control.c ****     instance->motor_controller.speed_feedforward_ptr = config->controller_param_init_config.speed_f
+ 619              		.loc 1 195 5 is_stmt 1 view .LVU196
+ 620              		.loc 1 195 92 is_stmt 0 view .LVU197
+ 621 0062 AB68     		ldr	r3, [r5, #8]
+ 622              		.loc 1 195 54 view .LVU198
+ 623 0064 A362     		str	r3, [r4, #40]
+ 196:modules/motor/power_control.c ****     // 后续增加电机前馈控制器(速度和电流)
+ 197:modules/motor/power_control.c **** 
+ 198:modules/motor/power_control.c ****     // 电机分组,因为至多4个电机可以共用一帧CAN控制报文
+ 199:modules/motor/power_control.c ****     MotorSenderGrouping(instance, &config->can_init_config);
+ 624              		.loc 1 199 5 is_stmt 1 view .LVU199
+ 625 0066 05F19C06 		add	r6, r5, #156
+ 626 006a 3146     		mov	r1, r6
+ 627 006c 2046     		mov	r0, r4
+ 628 006e FFF7FEFF 		bl	MotorSenderGrouping
+ 629              	.LVL45:
+ 200:modules/motor/power_control.c **** 
+ 201:modules/motor/power_control.c ****     // 注册电机到CAN总线
+ 202:modules/motor/power_control.c ****     config->can_init_config.can_module_callback = DecodeDJIMotor; // set callback
+ 630              		.loc 1 202 5 view .LVU200
+ 631              		.loc 1 202 49 is_stmt 0 view .LVU201
+ 632 0072 134B     		ldr	r3, .L40
+ 633 0074 C5F8A830 		str	r3, [r5, #168]
+ 203:modules/motor/power_control.c ****     config->can_init_config.id = instance;                        // set id,eq to address(it is ide
+ 634              		.loc 1 203 5 is_stmt 1 view .LVU202
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 17
+
+
+ 635              		.loc 1 203 32 is_stmt 0 view .LVU203
+ 636 0078 C5F8AC40 		str	r4, [r5, #172]
+ 204:modules/motor/power_control.c ****     instance->motor_can_instance = CANRegister(&config->can_init_config);
+ 637              		.loc 1 204 5 is_stmt 1 view .LVU204
+ 638              		.loc 1 204 36 is_stmt 0 view .LVU205
+ 639 007c 3046     		mov	r0, r6
+ 640 007e FFF7FEFF 		bl	CANRegister
+ 641              	.LVL46:
+ 642              		.loc 1 204 34 discriminator 1 view .LVU206
+ 643 0082 C4F8A001 		str	r0, [r4, #416]
+ 205:modules/motor/power_control.c **** 
+ 206:modules/motor/power_control.c ****     // 注册守护线程
+ 207:modules/motor/power_control.c ****     Daemon_Init_Config_s daemon_config = {
+ 644              		.loc 1 207 5 is_stmt 1 view .LVU207
+ 645              		.loc 1 207 26 is_stmt 0 view .LVU208
+ 646 0086 01A8     		add	r0, sp, #4
+ 647 0088 0023     		movs	r3, #0
+ 648 008a 0193     		str	r3, [sp, #4]
+ 649 008c 4360     		str	r3, [r0, #4]
+ 650 008e 8360     		str	r3, [r0, #8]
+ 651 0090 0223     		movs	r3, #2
+ 652 0092 ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 653 0096 0B4B     		ldr	r3, .L40+4
+ 654 0098 0293     		str	r3, [sp, #8]
+ 655 009a 0394     		str	r4, [sp, #12]
+ 208:modules/motor/power_control.c ****         .callback = DJIMotorLostCallback,
+ 209:modules/motor/power_control.c ****         .owner_id = instance,
+ 210:modules/motor/power_control.c ****         .reload_count = 2, // 20ms未收到数据则丢失
+ 211:modules/motor/power_control.c ****     };
+ 212:modules/motor/power_control.c ****     instance->daemon = DaemonRegister(&daemon_config);
+ 656              		.loc 1 212 5 is_stmt 1 view .LVU209
+ 657              		.loc 1 212 24 is_stmt 0 view .LVU210
+ 658 009c FFF7FEFF 		bl	DaemonRegister
+ 659              	.LVL47:
+ 660              		.loc 1 212 22 discriminator 1 view .LVU211
+ 661 00a0 C4F8A801 		str	r0, [r4, #424]
+ 213:modules/motor/power_control.c **** 
+ 214:modules/motor/power_control.c ****     DJIMotorEnable(instance);
+ 662              		.loc 1 214 5 is_stmt 1 view .LVU212
+ 663 00a4 2046     		mov	r0, r4
+ 664 00a6 FFF7FEFF 		bl	DJIMotorEnable
+ 665              	.LVL48:
+ 215:modules/motor/power_control.c ****     dji_motor_instance[idx++] = instance;
+ 666              		.loc 1 215 5 view .LVU213
+ 667              		.loc 1 215 27 is_stmt 0 view .LVU214
+ 668 00aa 074A     		ldr	r2, .L40+8
+ 669 00ac 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 670 00ae 591C     		adds	r1, r3, #1
+ 671 00b0 1170     		strb	r1, [r2]
+ 672              		.loc 1 215 31 view .LVU215
+ 673 00b2 064A     		ldr	r2, .L40+12
+ 674 00b4 42F82340 		str	r4, [r2, r3, lsl #2]
+ 216:modules/motor/power_control.c ****     return instance;
+ 675              		.loc 1 216 5 is_stmt 1 view .LVU216
+ 217:modules/motor/power_control.c **** }
+ 676              		.loc 1 217 1 is_stmt 0 view .LVU217
+ 677 00b8 2046     		mov	r0, r4
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 18
+
+
+ 678 00ba 04B0     		add	sp, sp, #16
+ 679              	.LCFI5:
+ 680              		.cfi_def_cfa_offset 16
+ 681              		@ sp needed
+ 682 00bc 70BD     		pop	{r4, r5, r6, pc}
+ 683              	.LVL49:
+ 684              	.L41:
+ 685              		.loc 1 217 1 view .LVU218
+ 686 00be 00BF     		.align	2
+ 687              	.L40:
+ 688 00c0 00000000 		.word	DecodeDJIMotor
+ 689 00c4 00000000 		.word	DJIMotorLostCallback
+ 690 00c8 00000000 		.word	idx
+ 691 00cc 00000000 		.word	dji_motor_instance
+ 692              		.cfi_endproc
+ 693              	.LFE275:
+ 695              		.section	.text.PowerControl,"ax",%progbits
+ 696              		.align	1
+ 697              		.global	PowerControl
+ 698              		.syntax unified
+ 699              		.thumb
+ 700              		.thumb_func
+ 702              	PowerControl:
+ 703              	.LFB276:
+ 218:modules/motor/power_control.c **** 
+ 219:modules/motor/power_control.c **** // 为所有电机实例计算三环PID,发送控制报文
+ 220:modules/motor/power_control.c **** void PowerControl()
+ 221:modules/motor/power_control.c **** {
+ 704              		.loc 1 221 1 is_stmt 1 view -0
+ 705              		.cfi_startproc
+ 706              		@ args = 0, pretend = 0, frame = 0
+ 707              		@ frame_needed = 0, uses_anonymous_args = 0
+ 708 0000 2DE9F843 		push	{r3, r4, r5, r6, r7, r8, r9, lr}
+ 709              	.LCFI6:
+ 710              		.cfi_def_cfa_offset 32
+ 711              		.cfi_offset 3, -32
+ 712              		.cfi_offset 4, -28
+ 713              		.cfi_offset 5, -24
+ 714              		.cfi_offset 6, -20
+ 715              		.cfi_offset 7, -16
+ 716              		.cfi_offset 8, -12
+ 717              		.cfi_offset 9, -8
+ 718              		.cfi_offset 14, -4
+ 719 0004 2DED048B 		vpush.64	{d8, d9}
+ 720              	.LCFI7:
+ 721              		.cfi_def_cfa_offset 48
+ 722              		.cfi_offset 80, -48
+ 723              		.cfi_offset 81, -44
+ 724              		.cfi_offset 82, -40
+ 725              		.cfi_offset 83, -36
+ 222:modules/motor/power_control.c ****     // 直接保存一次指针引用从而减小访存的开销,同样可以提高可读性
+ 223:modules/motor/power_control.c ****     uint8_t group, num; // 电机组号和组内编号
+ 726              		.loc 1 223 5 view .LVU220
+ 224:modules/motor/power_control.c ****     int16_t set;        // 电机控制CAN发送设定值
+ 727              		.loc 1 224 5 view .LVU221
+ 225:modules/motor/power_control.c ****     DJIMotorInstance *motor;
+ 728              		.loc 1 225 5 view .LVU222
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 19
+
+
+ 226:modules/motor/power_control.c ****     Motor_Control_Setting_s *motor_setting; // 电机控制参数
+ 729              		.loc 1 226 5 view .LVU223
+ 227:modules/motor/power_control.c ****     Motor_Controller_s *motor_controller;   // 电机控制器
+ 730              		.loc 1 227 5 view .LVU224
+ 228:modules/motor/power_control.c ****     DJI_Motor_Measure_s *measure;           // 电机测量值
+ 731              		.loc 1 228 5 view .LVU225
+ 229:modules/motor/power_control.c ****     float pid_measure, pid_ref;             // 电机PID测量值和设定值
+ 732              		.loc 1 229 5 view .LVU226
+ 230:modules/motor/power_control.c ****     initial_total_power = 0.0f;
+ 733              		.loc 1 230 5 view .LVU227
+ 734              		.loc 1 230 25 is_stmt 0 view .LVU228
+ 735 0008 BA4B     		ldr	r3, .L82
+ 736 000a 0022     		movs	r2, #0
+ 737 000c 1A60     		str	r2, [r3]	@ float
+ 231:modules/motor/power_control.c ****     // 遍历所有电机实例,进行串级PID的计算并设置发送报文的值
+ 232:modules/motor/power_control.c ****     for (size_t i = 0; i < idx; ++i) // idx实际上是4个
+ 738              		.loc 1 232 5 is_stmt 1 view .LVU229
+ 739              	.LBB6:
+ 740              		.loc 1 232 10 view .LVU230
+ 741              	.LVL50:
+ 742              		.loc 1 232 17 is_stmt 0 view .LVU231
+ 743 000e 0024     		movs	r4, #0
+ 744              		.loc 1 232 5 view .LVU232
+ 745 0010 5BE0     		b	.L43
+ 746              	.LVL51:
+ 747              	.L78:
+ 233:modules/motor/power_control.c ****     {                                // 减小访存开销,先保存指针引用
+ 234:modules/motor/power_control.c ****         motor = dji_motor_instance[i];
+ 235:modules/motor/power_control.c ****         motor_setting = &motor->motor_settings;
+ 236:modules/motor/power_control.c ****         motor_controller = &motor->motor_controller;
+ 237:modules/motor/power_control.c ****         measure = &motor->measure;
+ 238:modules/motor/power_control.c ****         pid_ref = motor_controller->pid_ref; // 保存设定值,防止motor_controller->pid_ref在�
+ 239:modules/motor/power_control.c ****         if (motor_setting->motor_reverse_flag == MOTOR_DIRECTION_REVERSE)
+ 240:modules/motor/power_control.c ****             pid_ref *= -1; // 设置反转
+ 748              		.loc 1 240 13 is_stmt 1 view .LVU233
+ 749              		.loc 1 240 21 is_stmt 0 view .LVU234
+ 750 0012 F1EE600A 		vneg.f32	s1, s1
+ 751              	.LVL52:
+ 752              		.loc 1 240 21 view .LVU235
+ 753 0016 64E0     		b	.L44
+ 754              	.LVL53:
+ 755              	.L46:
+ 241:modules/motor/power_control.c **** 
+ 242:modules/motor/power_control.c ****         // pid_ref会顺次通过被启用的闭环充当数据的载体
+ 243:modules/motor/power_control.c ****         // 计算位置环,只有启用位置环且外层闭环为位置时会计算速度环输出
+ 244:modules/motor/power_control.c **** 
+ 245:modules/motor/power_control.c ****         // 计算速度环,(外层闭环为速度或位置)且(启用速度环)时会计算速度�
+ 246:modules/motor/power_control.c ****         if ((motor_setting->close_loop_type & SPEED_LOOP) && (motor_setting->outer_loop_type & (ANG
+ 247:modules/motor/power_control.c ****         {
+ 248:modules/motor/power_control.c ****             if (motor_setting->feedforward_flag & SPEED_FEEDFORWARD)
+ 249:modules/motor/power_control.c ****                 pid_ref += *motor_controller->speed_feedforward_ptr;
+ 250:modules/motor/power_control.c **** 
+ 251:modules/motor/power_control.c ****             if (motor_setting->speed_feedback_source == OTHER_FEED)
+ 756              		.loc 1 251 13 is_stmt 1 view .LVU236
+ 757              		.loc 1 251 30 is_stmt 0 view .LVU237
+ 758 0018 6B7F     		ldrb	r3, [r5, #29]	@ zero_extendqisi2
+ 759              		.loc 1 251 16 view .LVU238
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 20
+
+
+ 760 001a 012B     		cmp	r3, #1
+ 761 001c 73D0     		beq	.L75
+ 252:modules/motor/power_control.c ****                 pid_measure = *motor_controller->other_speed_feedback_ptr;
+ 253:modules/motor/power_control.c ****             else // MOTOR_FEED
+ 254:modules/motor/power_control.c ****                 pid_measure = measure->speed_aps / 6.0f; // 电机的速度单位是度每秒,转�
+ 762              		.loc 1 254 17 is_stmt 1 view .LVU239
+ 763              		.loc 1 254 38 is_stmt 0 view .LVU240
+ 764 001e 95ED027A 		vldr.32	s14, [r5, #8]
+ 765              		.loc 1 254 29 view .LVU241
+ 766 0022 F1EE087A 		vmov.f32	s15, #6.0e+0
+ 767 0026 87EE278A 		vdiv.f32	s16, s14, s15
+ 768              	.L48:
+ 769              	.LVL54:
+ 255:modules/motor/power_control.c ****             // 更新pid_ref进入下一个环
+ 256:modules/motor/power_control.c ****             pid_ref = PIDCalculate(&motor_controller->speed_PID, pid_measure, pid_ref);
+ 770              		.loc 1 256 13 is_stmt 1 view .LVU242
+ 771              		.loc 1 256 23 is_stmt 0 view .LVU243
+ 772 002a B0EE480A 		vmov.f32	s0, s16
+ 773 002e 05F1A800 		add	r0, r5, #168
+ 774 0032 FFF7FEFF 		bl	PIDCalculate
+ 775              	.LVL55:
+ 776              		.loc 1 256 23 view .LVU244
+ 777 0036 F0EE400A 		vmov.f32	s1, s0
+ 778              	.LVL56:
+ 257:modules/motor/power_control.c ****             initial_torque[i] = pid_ref;
+ 779              		.loc 1 257 13 is_stmt 1 view .LVU245
+ 780              		.loc 1 257 31 is_stmt 0 view .LVU246
+ 781 003a AF4B     		ldr	r3, .L82+4
+ 782 003c 03EB8403 		add	r3, r3, r4, lsl #2
+ 783 0040 83ED000A 		vstr.32	s0, [r3]
+ 258:modules/motor/power_control.c ****             power_control_out[i] = pid_ref;
+ 784              		.loc 1 258 13 is_stmt 1 view .LVU247
+ 785              		.loc 1 258 34 is_stmt 0 view .LVU248
+ 786 0044 AD4B     		ldr	r3, .L82+8
+ 787 0046 03EB8403 		add	r3, r3, r4, lsl #2
+ 788 004a 83ED000A 		vstr.32	s0, [r3]
+ 259:modules/motor/power_control.c ****             A = K1[i] * initial_torque[i] * initial_torque[i];
+ 789              		.loc 1 259 13 is_stmt 1 view .LVU249
+ 790              		.loc 1 259 19 is_stmt 0 view .LVU250
+ 791 004e AC4B     		ldr	r3, .L82+12
+ 792 0050 03EB8403 		add	r3, r3, r4, lsl #2
+ 793 0054 D3ED007A 		vldr.32	s15, [r3]
+ 794              		.loc 1 259 23 view .LVU251
+ 795 0058 67EE807A 		vmul.f32	s15, s15, s0
+ 796              		.loc 1 259 43 view .LVU252
+ 797 005c 67EE807A 		vmul.f32	s15, s15, s0
+ 798              		.loc 1 259 15 view .LVU253
+ 799 0060 A84B     		ldr	r3, .L82+16
+ 800 0062 C3ED007A 		vstr.32	s15, [r3]
+ 260:modules/motor/power_control.c ****             B = K2[i] * pid_measure * pid_measure;
+ 801              		.loc 1 260 13 is_stmt 1 view .LVU254
+ 802              		.loc 1 260 19 is_stmt 0 view .LVU255
+ 803 0066 A84B     		ldr	r3, .L82+20
+ 804 0068 03EB8403 		add	r3, r3, r4, lsl #2
+ 805 006c 93ED007A 		vldr.32	s14, [r3]
+ 806              		.loc 1 260 23 view .LVU256
+ 807 0070 27EE087A 		vmul.f32	s14, s14, s16
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 21
+
+
+ 808              		.loc 1 260 37 view .LVU257
+ 809 0074 27EE087A 		vmul.f32	s14, s14, s16
+ 810              		.loc 1 260 15 view .LVU258
+ 811 0078 A44B     		ldr	r3, .L82+24
+ 812 007a 83ED007A 		vstr.32	s14, [r3]
+ 261:modules/motor/power_control.c ****             C = POWER_COEF * pid_measure * initial_torque[i] * TORQUE_COEF;
+ 813              		.loc 1 261 13 is_stmt 1 view .LVU259
+ 814              		.loc 1 261 28 is_stmt 0 view .LVU260
+ 815 007e DFEDA46A 		vldr.32	s13, .L82+28
+ 816 0082 28EE268A 		vmul.f32	s16, s16, s13
+ 817              	.LVL57:
+ 818              		.loc 1 261 42 view .LVU261
+ 819 0086 28EE008A 		vmul.f32	s16, s16, s0
+ 820              		.loc 1 261 62 view .LVU262
+ 821 008a DFEDA26A 		vldr.32	s13, .L82+32
+ 822 008e 28EE268A 		vmul.f32	s16, s16, s13
+ 823              		.loc 1 261 15 view .LVU263
+ 824 0092 A14B     		ldr	r3, .L82+36
+ 825 0094 83ED008A 		vstr.32	s16, [r3]
+ 262:modules/motor/power_control.c ****             initial_give_power[i] = A + B + C + constant[i];
+ 826              		.loc 1 262 13 is_stmt 1 view .LVU264
+ 827              		.loc 1 262 39 is_stmt 0 view .LVU265
+ 828 0098 77EE877A 		vadd.f32	s15, s15, s14
+ 829              		.loc 1 262 43 view .LVU266
+ 830 009c 38EE278A 		vadd.f32	s16, s16, s15
+ 831              		.loc 1 262 57 view .LVU267
+ 832 00a0 9E4B     		ldr	r3, .L82+40
+ 833 00a2 03EB8403 		add	r3, r3, r4, lsl #2
+ 834 00a6 D3ED007A 		vldr.32	s15, [r3]
+ 835              		.loc 1 262 47 view .LVU268
+ 836 00aa 38EE278A 		vadd.f32	s16, s16, s15
+ 837              		.loc 1 262 35 view .LVU269
+ 838 00ae 9C4B     		ldr	r3, .L82+44
+ 839 00b0 03EB8403 		add	r3, r3, r4, lsl #2
+ 840 00b4 83ED008A 		vstr.32	s16, [r3]
+ 841              	.LVL58:
+ 842              	.L45:
+ 263:modules/motor/power_control.c ****         }
+ 264:modules/motor/power_control.c **** 
+ 265:modules/motor/power_control.c ****         if (motor_setting->feedback_reverse_flag == FEEDBACK_DIRECTION_REVERSE)
+ 843              		.loc 1 265 9 is_stmt 1 view .LVU270
+ 844              		.loc 1 265 26 is_stmt 0 view .LVU271
+ 845 00b8 EB7E     		ldrb	r3, [r5, #27]	@ zero_extendqisi2
+ 846              		.loc 1 265 12 view .LVU272
+ 847 00ba 012B     		cmp	r3, #1
+ 848 00bc 27D0     		beq	.L76
+ 849              	.LVL59:
+ 850              	.L49:
+ 266:modules/motor/power_control.c ****             pid_ref *= -1;
+ 267:modules/motor/power_control.c **** 
+ 268:modules/motor/power_control.c ****         // 获取最终输出
+ 269:modules/motor/power_control.c ****         power_control_out[i] = pid_ref;
+ 851              		.loc 1 269 9 is_stmt 1 view .LVU273
+ 852              		.loc 1 269 30 is_stmt 0 view .LVU274
+ 853 00be 8F4B     		ldr	r3, .L82+8
+ 854 00c0 03EB8403 		add	r3, r3, r4, lsl #2
+ 855 00c4 C3ED000A 		vstr.32	s1, [r3]
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 22
+
+
+ 232:modules/motor/power_control.c ****     {                                // 减小访存开销,先保存指针引用
+ 856              		.loc 1 232 33 is_stmt 1 discriminator 2 view .LVU275
+ 857 00c8 0134     		adds	r4, r4, #1
+ 858              	.LVL60:
+ 859              	.L43:
+ 232:modules/motor/power_control.c ****     {                                // 减小访存开销,先保存指针引用
+ 860              		.loc 1 232 26 discriminator 1 view .LVU276
+ 861 00ca 964B     		ldr	r3, .L82+48
+ 862 00cc 1D78     		ldrb	r5, [r3]	@ zero_extendqisi2
+ 863 00ce A542     		cmp	r5, r4
+ 864 00d0 20D9     		bls	.L77
+ 234:modules/motor/power_control.c ****         motor_setting = &motor->motor_settings;
+ 865              		.loc 1 234 9 view .LVU277
+ 234:modules/motor/power_control.c ****         motor_setting = &motor->motor_settings;
+ 866              		.loc 1 234 15 is_stmt 0 view .LVU278
+ 867 00d2 954B     		ldr	r3, .L82+52
+ 868 00d4 53F82450 		ldr	r5, [r3, r4, lsl #2]
+ 869              	.LVL61:
+ 235:modules/motor/power_control.c ****         motor_controller = &motor->motor_controller;
+ 870              		.loc 1 235 9 is_stmt 1 view .LVU279
+ 236:modules/motor/power_control.c ****         measure = &motor->measure;
+ 871              		.loc 1 236 9 view .LVU280
+ 237:modules/motor/power_control.c ****         pid_ref = motor_controller->pid_ref; // 保存设定值,防止motor_controller->pid_ref在�
+ 872              		.loc 1 237 9 view .LVU281
+ 238:modules/motor/power_control.c ****         if (motor_setting->motor_reverse_flag == MOTOR_DIRECTION_REVERSE)
+ 873              		.loc 1 238 9 view .LVU282
+ 238:modules/motor/power_control.c ****         if (motor_setting->motor_reverse_flag == MOTOR_DIRECTION_REVERSE)
+ 874              		.loc 1 238 17 is_stmt 0 view .LVU283
+ 875 00d8 D5ED660A 		vldr.32	s1, [r5, #408]
+ 876              	.LVL62:
+ 239:modules/motor/power_control.c ****             pid_ref *= -1; // 设置反转
+ 877              		.loc 1 239 9 is_stmt 1 view .LVU284
+ 239:modules/motor/power_control.c ****             pid_ref *= -1; // 设置反转
+ 878              		.loc 1 239 26 is_stmt 0 view .LVU285
+ 879 00dc AB7E     		ldrb	r3, [r5, #26]	@ zero_extendqisi2
+ 239:modules/motor/power_control.c ****             pid_ref *= -1; // 设置反转
+ 880              		.loc 1 239 12 view .LVU286
+ 881 00de 012B     		cmp	r3, #1
+ 882 00e0 97D0     		beq	.L78
+ 883              	.LVL63:
+ 884              	.L44:
+ 246:modules/motor/power_control.c ****         {
+ 885              		.loc 1 246 9 is_stmt 1 view .LVU287
+ 246:modules/motor/power_control.c ****         {
+ 886              		.loc 1 246 27 is_stmt 0 view .LVU288
+ 887 00e2 6B7E     		ldrb	r3, [r5, #25]	@ zero_extendqisi2
+ 246:modules/motor/power_control.c ****         {
+ 888              		.loc 1 246 12 view .LVU289
+ 889 00e4 13F0020F 		tst	r3, #2
+ 890 00e8 E6D0     		beq	.L45
+ 246:modules/motor/power_control.c ****         {
+ 891              		.loc 1 246 76 discriminator 1 view .LVU290
+ 892 00ea 2B7E     		ldrb	r3, [r5, #24]	@ zero_extendqisi2
+ 246:modules/motor/power_control.c ****         {
+ 893              		.loc 1 246 59 discriminator 1 view .LVU291
+ 894 00ec 13F0060F 		tst	r3, #6
+ 895 00f0 E2D0     		beq	.L45
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 23
+
+
+ 248:modules/motor/power_control.c ****                 pid_ref += *motor_controller->speed_feedforward_ptr;
+ 896              		.loc 1 248 13 is_stmt 1 view .LVU292
+ 248:modules/motor/power_control.c ****                 pid_ref += *motor_controller->speed_feedforward_ptr;
+ 897              		.loc 1 248 30 is_stmt 0 view .LVU293
+ 898 00f2 AB7F     		ldrb	r3, [r5, #30]	@ zero_extendqisi2
+ 248:modules/motor/power_control.c ****                 pid_ref += *motor_controller->speed_feedforward_ptr;
+ 899              		.loc 1 248 16 view .LVU294
+ 900 00f4 13F0020F 		tst	r3, #2
+ 901 00f8 8ED0     		beq	.L46
+ 249:modules/motor/power_control.c **** 
+ 902              		.loc 1 249 17 is_stmt 1 view .LVU295
+ 249:modules/motor/power_control.c **** 
+ 903              		.loc 1 249 45 is_stmt 0 view .LVU296
+ 904 00fa AB6A     		ldr	r3, [r5, #40]
+ 249:modules/motor/power_control.c **** 
+ 905              		.loc 1 249 28 view .LVU297
+ 906 00fc D3ED007A 		vldr.32	s15, [r3]
+ 249:modules/motor/power_control.c **** 
+ 907              		.loc 1 249 25 view .LVU298
+ 908 0100 70EEA70A 		vadd.f32	s1, s1, s15
+ 909              	.LVL64:
+ 249:modules/motor/power_control.c **** 
+ 910              		.loc 1 249 25 view .LVU299
+ 911 0104 88E7     		b	.L46
+ 912              	.LVL65:
+ 913              	.L75:
+ 252:modules/motor/power_control.c ****             else // MOTOR_FEED
+ 914              		.loc 1 252 17 is_stmt 1 view .LVU300
+ 252:modules/motor/power_control.c ****             else // MOTOR_FEED
+ 915              		.loc 1 252 48 is_stmt 0 view .LVU301
+ 916 0106 6B6A     		ldr	r3, [r5, #36]
+ 252:modules/motor/power_control.c ****             else // MOTOR_FEED
+ 917              		.loc 1 252 29 view .LVU302
+ 918 0108 93ED008A 		vldr.32	s16, [r3]
+ 919              	.LVL66:
+ 252:modules/motor/power_control.c ****             else // MOTOR_FEED
+ 920              		.loc 1 252 29 view .LVU303
+ 921 010c 8DE7     		b	.L48
+ 922              	.LVL67:
+ 923              	.L76:
+ 266:modules/motor/power_control.c **** 
+ 924              		.loc 1 266 13 is_stmt 1 view .LVU304
+ 266:modules/motor/power_control.c **** 
+ 925              		.loc 1 266 21 is_stmt 0 view .LVU305
+ 926 010e F1EE600A 		vneg.f32	s1, s1
+ 927              	.LVL68:
+ 266:modules/motor/power_control.c **** 
+ 928              		.loc 1 266 21 view .LVU306
+ 929 0112 D4E7     		b	.L49
+ 930              	.LVL69:
+ 931              	.L77:
+ 266:modules/motor/power_control.c **** 
+ 932              		.loc 1 266 21 view .LVU307
+ 933              	.LBE6:
+ 934              	.LBB7:
+ 270:modules/motor/power_control.c ****     }
+ 271:modules/motor/power_control.c ****     for (uint8_t i = 0; i < idx; i++)
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 24
+
+
+ 935              		.loc 1 271 18 view .LVU308
+ 936 0114 0023     		movs	r3, #0
+ 937 0116 01E0     		b	.L51
+ 938              	.LVL70:
+ 939              	.L52:
+ 940              		.loc 1 271 35 is_stmt 1 discriminator 2 view .LVU309
+ 941 0118 0133     		adds	r3, r3, #1
+ 942              	.LVL71:
+ 943              		.loc 1 271 35 is_stmt 0 discriminator 2 view .LVU310
+ 944 011a DBB2     		uxtb	r3, r3
+ 945              	.LVL72:
+ 946              	.L51:
+ 947              		.loc 1 271 27 is_stmt 1 discriminator 1 view .LVU311
+ 948 011c 9D42     		cmp	r5, r3
+ 949 011e 11D9     		bls	.L79
+ 272:modules/motor/power_control.c ****     {
+ 273:modules/motor/power_control.c ****         if (initial_give_power[i] < 0)
+ 950              		.loc 1 273 9 view .LVU312
+ 951              		.loc 1 273 31 is_stmt 0 view .LVU313
+ 952 0120 7F4A     		ldr	r2, .L82+44
+ 953 0122 02EB8302 		add	r2, r2, r3, lsl #2
+ 954 0126 92ED007A 		vldr.32	s14, [r2]
+ 955              		.loc 1 273 12 view .LVU314
+ 956 012a B5EEC07A 		vcmpe.f32	s14, #0
+ 957 012e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 958 0132 F1D4     		bmi	.L52
+ 274:modules/motor/power_control.c ****         {
+ 275:modules/motor/power_control.c ****             continue;
+ 276:modules/motor/power_control.c ****         }
+ 277:modules/motor/power_control.c ****         initial_total_power += initial_give_power[i];
+ 959              		.loc 1 277 9 is_stmt 1 view .LVU315
+ 960              		.loc 1 277 29 is_stmt 0 view .LVU316
+ 961 0134 6F4A     		ldr	r2, .L82
+ 962 0136 D2ED007A 		vldr.32	s15, [r2]
+ 963 013a 77EE877A 		vadd.f32	s15, s15, s14
+ 964 013e C2ED007A 		vstr.32	s15, [r2]
+ 965 0142 E9E7     		b	.L52
+ 966              	.L79:
+ 967              	.LBE7:
+ 278:modules/motor/power_control.c ****     }
+ 279:modules/motor/power_control.c ****     if (initial_total_power > chassis_max_power)
+ 968              		.loc 1 279 5 is_stmt 1 view .LVU317
+ 969              		.loc 1 279 29 is_stmt 0 view .LVU318
+ 970 0144 6B4B     		ldr	r3, .L82
+ 971              	.LVL73:
+ 972              		.loc 1 279 29 view .LVU319
+ 973 0146 D3ED007A 		vldr.32	s15, [r3]
+ 974 014a 784B     		ldr	r3, .L82+56
+ 975 014c 93ED007A 		vldr.32	s14, [r3]
+ 976              		.loc 1 279 8 view .LVU320
+ 977 0150 F4EEC77A 		vcmpe.f32	s15, s14
+ 978 0154 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 979 0158 40F32381 		ble	.L54
+ 980              	.LBB8:
+ 280:modules/motor/power_control.c ****     {
+ 281:modules/motor/power_control.c ****         float ratio = chassis_max_power / initial_total_power; // 根据允许的最大功率进行
+ 981              		.loc 1 281 9 is_stmt 1 view .LVU321
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 25
+
+
+ 982              		.loc 1 281 15 is_stmt 0 view .LVU322
+ 983 015c C7EE279A 		vdiv.f32	s19, s14, s15
+ 984              	.LVL74:
+ 282:modules/motor/power_control.c ****         for (uint8_t i = 0; i < idx; i++)
+ 985              		.loc 1 282 9 is_stmt 1 view .LVU323
+ 986              	.LBB9:
+ 987              		.loc 1 282 14 view .LVU324
+ 988              		.loc 1 282 22 is_stmt 0 view .LVU325
+ 989 0160 0024     		movs	r4, #0
+ 990              	.LVL75:
+ 991              		.loc 1 282 9 view .LVU326
+ 992 0162 43E0     		b	.L56
+ 993              	.LVL76:
+ 994              	.L73:
+ 995              	.LBB10:
+ 283:modules/motor/power_control.c ****         {
+ 284:modules/motor/power_control.c ****             motor = dji_motor_instance[i];
+ 285:modules/motor/power_control.c ****             measure = &motor->measure;
+ 286:modules/motor/power_control.c ****             pid_measure = measure->speed_aps / 6.0f; // 电机的速度单位是度每秒,转换为
+ 287:modules/motor/power_control.c ****             initial_give_power[i] *= ratio;
+ 288:modules/motor/power_control.c ****             if (initial_give_power[i] < 0) // 功率小于零，表明依靠发电减速，因此�
+ 289:modules/motor/power_control.c ****             {
+ 290:modules/motor/power_control.c ****                 continue;
+ 291:modules/motor/power_control.c ****             }
+ 292:modules/motor/power_control.c ****             float a = K1[i];
+ 293:modules/motor/power_control.c ****             float b = TORQUE_COEF * POWER_COEF * pid_measure;
+ 294:modules/motor/power_control.c ****             float c = K2[i] * pid_measure * pid_measure - initial_give_power[i] + constant[i];
+ 295:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 296:modules/motor/power_control.c ****             {
+ 297:modules/motor/power_control.c ****                 power_control_out[i] = (-b + sqrt(b * b - 4 * a * c)) / (2 * a);
+ 298:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 299:modules/motor/power_control.c ****                 {
+ 300:modules/motor/power_control.c ****                     power_control_out[i] = 15000;
+ 301:modules/motor/power_control.c ****                 }
+ 302:modules/motor/power_control.c ****             }
+ 303:modules/motor/power_control.c ****             else
+ 304:modules/motor/power_control.c ****             {
+ 305:modules/motor/power_control.c ****                 power_control_out[i] = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
+ 996              		.loc 1 305 17 is_stmt 1 view .LVU327
+ 997              		.loc 1 305 41 is_stmt 0 view .LVU328
+ 998 0164 F1EE687A 		vneg.f32	s15, s17
+ 999 0168 17EE900A 		vmov	r0, s15
+ 1000 016c FFF7FEFF 		bl	__aeabi_f2d
+ 1001              	.LVL77:
+ 1002              		.loc 1 305 41 view .LVU329
+ 1003 0170 8046     		mov	r8, r0
+ 1004 0172 8946     		mov	r9, r1
+ 1005              		.loc 1 305 53 view .LVU330
+ 1006 0174 68EEA88A 		vmul.f32	s17, s17, s17
+ 1007              	.LVL78:
+ 1008              		.loc 1 305 61 view .LVU331
+ 1009 0178 F1EE007A 		vmov.f32	s15, #4.0e+0
+ 1010 017c 69EE277A 		vmul.f32	s15, s18, s15
+ 1011              		.loc 1 305 65 view .LVU332
+ 1012 0180 67EE887A 		vmul.f32	s15, s15, s16
+ 1013              		.loc 1 305 46 view .LVU333
+ 1014 0184 78EEE77A 		vsub.f32	s15, s17, s15
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 26
+
+
+ 1015 0188 17EE900A 		vmov	r0, s15
+ 1016 018c FFF7FEFF 		bl	__aeabi_f2d
+ 1017              	.LVL79:
+ 1018 0190 41EC100B 		vmov	d0, r0, r1
+ 1019 0194 FFF7FEFF 		bl	sqrt
+ 1020              	.LVL80:
+ 1021 0198 53EC102B 		vmov	r2, r3, d0
+ 1022              		.loc 1 305 44 discriminator 1 view .LVU334
+ 1023 019c 4046     		mov	r0, r8
+ 1024 019e 4946     		mov	r1, r9
+ 1025 01a0 FFF7FEFF 		bl	__aeabi_dsub
+ 1026              	.LVL81:
+ 1027 01a4 8046     		mov	r8, r0
+ 1028 01a6 8946     		mov	r9, r1
+ 1029              		.loc 1 305 76 discriminator 1 view .LVU335
+ 1030 01a8 79EE097A 		vadd.f32	s15, s18, s18
+ 1031 01ac 17EE900A 		vmov	r0, s15
+ 1032 01b0 FFF7FEFF 		bl	__aeabi_f2d
+ 1033              	.LVL82:
+ 1034 01b4 0246     		mov	r2, r0
+ 1035 01b6 0B46     		mov	r3, r1
+ 1036              		.loc 1 305 71 discriminator 1 view .LVU336
+ 1037 01b8 4046     		mov	r0, r8
+ 1038 01ba 4946     		mov	r1, r9
+ 1039 01bc FFF7FEFF 		bl	__aeabi_ddiv
+ 1040              	.LVL83:
+ 1041 01c0 FFF7FEFF 		bl	__aeabi_d2f
+ 1042              	.LVL84:
+ 1043 01c4 07EE900A 		vmov	s15, r0
+ 1044              		.loc 1 305 38 discriminator 1 view .LVU337
+ 1045 01c8 4C4B     		ldr	r3, .L82+8
+ 1046 01ca 03EB8403 		add	r3, r3, r4, lsl #2
+ 1047 01ce 1860     		str	r0, [r3]	@ float
+ 306:modules/motor/power_control.c ****                 if (power_control_out[i] < -15000)
+ 1048              		.loc 1 306 17 is_stmt 1 view .LVU338
+ 1049              		.loc 1 306 20 is_stmt 0 view .LVU339
+ 1050 01d0 9FED577A 		vldr.32	s14, .L82+60
+ 1051 01d4 F4EEC77A 		vcmpe.f32	s15, s14
+ 1052 01d8 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 1053 01dc 04D5     		bpl	.L57
+ 307:modules/motor/power_control.c ****                 {
+ 308:modules/motor/power_control.c ****                     power_control_out[i] = -15000;
+ 1054              		.loc 1 308 21 is_stmt 1 view .LVU340
+ 1055              		.loc 1 308 42 is_stmt 0 view .LVU341
+ 1056 01de 474B     		ldr	r3, .L82+8
+ 1057 01e0 03EB8403 		add	r3, r3, r4, lsl #2
+ 1058 01e4 83ED007A 		vstr.32	s14, [r3]
+ 1059              	.LVL85:
+ 1060              	.L57:
+ 1061              		.loc 1 308 42 view .LVU342
+ 1062              	.LBE10:
+ 282:modules/motor/power_control.c ****         {
+ 1063              		.loc 1 282 39 is_stmt 1 discriminator 2 view .LVU343
+ 1064 01e8 0134     		adds	r4, r4, #1
+ 1065              	.LVL86:
+ 282:modules/motor/power_control.c ****         {
+ 1066              		.loc 1 282 39 is_stmt 0 discriminator 2 view .LVU344
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 27
+
+
+ 1067 01ea E4B2     		uxtb	r4, r4
+ 1068              	.LVL87:
+ 1069              	.L56:
+ 282:modules/motor/power_control.c ****         {
+ 1070              		.loc 1 282 31 is_stmt 1 discriminator 1 view .LVU345
+ 1071 01ec A542     		cmp	r5, r4
+ 1072 01ee 40F2D880 		bls	.L54
+ 1073              	.LBB11:
+ 284:modules/motor/power_control.c ****             measure = &motor->measure;
+ 1074              		.loc 1 284 13 view .LVU346
+ 284:modules/motor/power_control.c ****             measure = &motor->measure;
+ 1075              		.loc 1 284 19 is_stmt 0 view .LVU347
+ 1076 01f2 4D4B     		ldr	r3, .L82+52
+ 1077 01f4 53F82430 		ldr	r3, [r3, r4, lsl #2]
+ 1078              	.LVL88:
+ 285:modules/motor/power_control.c ****             pid_measure = measure->speed_aps / 6.0f; // 电机的速度单位是度每秒,转换为
+ 1079              		.loc 1 285 13 is_stmt 1 view .LVU348
+ 286:modules/motor/power_control.c ****             initial_give_power[i] *= ratio;
+ 1080              		.loc 1 286 13 view .LVU349
+ 286:modules/motor/power_control.c ****             initial_give_power[i] *= ratio;
+ 1081              		.loc 1 286 34 is_stmt 0 view .LVU350
+ 1082 01f8 D3ED026A 		vldr.32	s13, [r3, #8]
+ 286:modules/motor/power_control.c ****             initial_give_power[i] *= ratio;
+ 1083              		.loc 1 286 25 view .LVU351
+ 1084 01fc F1EE087A 		vmov.f32	s15, #6.0e+0
+ 1085 0200 86EEA77A 		vdiv.f32	s14, s13, s15
+ 1086              	.LVL89:
+ 287:modules/motor/power_control.c ****             if (initial_give_power[i] < 0) // 功率小于零，表明依靠发电减速，因此�
+ 1087              		.loc 1 287 13 is_stmt 1 view .LVU352
+ 287:modules/motor/power_control.c ****             if (initial_give_power[i] < 0) // 功率小于零，表明依靠发电减速，因此�
+ 1088              		.loc 1 287 31 is_stmt 0 view .LVU353
+ 1089 0204 464B     		ldr	r3, .L82+44
+ 1090              	.LVL90:
+ 287:modules/motor/power_control.c ****             if (initial_give_power[i] < 0) // 功率小于零，表明依靠发电减速，因此�
+ 1091              		.loc 1 287 31 view .LVU354
+ 1092 0206 03EB8403 		add	r3, r3, r4, lsl #2
+ 1093 020a D3ED007A 		vldr.32	s15, [r3]
+ 287:modules/motor/power_control.c ****             if (initial_give_power[i] < 0) // 功率小于零，表明依靠发电减速，因此�
+ 1094              		.loc 1 287 35 view .LVU355
+ 1095 020e 67EEA97A 		vmul.f32	s15, s15, s19
+ 1096 0212 C3ED007A 		vstr.32	s15, [r3]
+ 288:modules/motor/power_control.c ****             {
+ 1097              		.loc 1 288 13 is_stmt 1 view .LVU356
+ 288:modules/motor/power_control.c ****             {
+ 1098              		.loc 1 288 16 is_stmt 0 view .LVU357
+ 1099 0216 F5EEC07A 		vcmpe.f32	s15, #0
+ 1100 021a F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 1101 021e E3D4     		bmi	.L57
+ 292:modules/motor/power_control.c ****             float b = TORQUE_COEF * POWER_COEF * pid_measure;
+ 1102              		.loc 1 292 13 is_stmt 1 view .LVU358
+ 292:modules/motor/power_control.c ****             float b = TORQUE_COEF * POWER_COEF * pid_measure;
+ 1103              		.loc 1 292 19 is_stmt 0 view .LVU359
+ 1104 0220 374B     		ldr	r3, .L82+12
+ 1105 0222 03EB8403 		add	r3, r3, r4, lsl #2
+ 1106 0226 93ED009A 		vldr.32	s18, [r3]
+ 1107              	.LVL91:
+ 293:modules/motor/power_control.c ****             float c = K2[i] * pid_measure * pid_measure - initial_give_power[i] + constant[i];
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 28
+
+
+ 1108              		.loc 1 293 13 is_stmt 1 view .LVU360
+ 293:modules/motor/power_control.c ****             float c = K2[i] * pid_measure * pid_measure - initial_give_power[i] + constant[i];
+ 1109              		.loc 1 293 19 is_stmt 0 view .LVU361
+ 1110 022a DFED428A 		vldr.32	s17, .L82+64
+ 1111 022e 67EE288A 		vmul.f32	s17, s14, s17
+ 1112              	.LVL92:
+ 294:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 1113              		.loc 1 294 13 is_stmt 1 view .LVU362
+ 294:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 1114              		.loc 1 294 25 is_stmt 0 view .LVU363
+ 1115 0232 354B     		ldr	r3, .L82+20
+ 1116 0234 03EB8403 		add	r3, r3, r4, lsl #2
+ 1117 0238 93ED008A 		vldr.32	s16, [r3]
+ 294:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 1118              		.loc 1 294 29 view .LVU364
+ 1119 023c 28EE078A 		vmul.f32	s16, s16, s14
+ 294:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 1120              		.loc 1 294 43 view .LVU365
+ 1121 0240 28EE078A 		vmul.f32	s16, s16, s14
+ 294:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 1122              		.loc 1 294 57 view .LVU366
+ 1123 0244 38EE678A 		vsub.f32	s16, s16, s15
+ 294:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 1124              		.loc 1 294 91 view .LVU367
+ 1125 0248 344B     		ldr	r3, .L82+40
+ 1126 024a 03EB8403 		add	r3, r3, r4, lsl #2
+ 1127 024e D3ED007A 		vldr.32	s15, [r3]
+ 294:modules/motor/power_control.c ****             if (power_control_out[i] > 0)
+ 1128              		.loc 1 294 19 view .LVU368
+ 1129 0252 38EE278A 		vadd.f32	s16, s16, s15
+ 1130              	.LVL93:
+ 295:modules/motor/power_control.c ****             {
+ 1131              		.loc 1 295 13 is_stmt 1 view .LVU369
+ 295:modules/motor/power_control.c ****             {
+ 1132              		.loc 1 295 34 is_stmt 0 view .LVU370
+ 1133 0256 294B     		ldr	r3, .L82+8
+ 1134 0258 03EB8403 		add	r3, r3, r4, lsl #2
+ 1135 025c D3ED007A 		vldr.32	s15, [r3]
+ 295:modules/motor/power_control.c ****             {
+ 1136              		.loc 1 295 16 view .LVU371
+ 1137 0260 F5EEC07A 		vcmpe.f32	s15, #0
+ 1138 0264 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 1139 0268 7FF77CAF 		ble	.L73
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1140              		.loc 1 297 17 is_stmt 1 view .LVU372
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1141              		.loc 1 297 41 is_stmt 0 view .LVU373
+ 1142 026c F1EE687A 		vneg.f32	s15, s17
+ 1143 0270 17EE900A 		vmov	r0, s15
+ 1144 0274 FFF7FEFF 		bl	__aeabi_f2d
+ 1145              	.LVL94:
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1146              		.loc 1 297 41 view .LVU374
+ 1147 0278 0646     		mov	r6, r0
+ 1148 027a 0F46     		mov	r7, r1
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1149              		.loc 1 297 53 view .LVU375
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 29
+
+
+ 1150 027c 68EEA88A 		vmul.f32	s17, s17, s17
+ 1151              	.LVL95:
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1152              		.loc 1 297 61 view .LVU376
+ 1153 0280 F1EE007A 		vmov.f32	s15, #4.0e+0
+ 1154 0284 69EE277A 		vmul.f32	s15, s18, s15
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1155              		.loc 1 297 65 view .LVU377
+ 1156 0288 67EE887A 		vmul.f32	s15, s15, s16
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1157              		.loc 1 297 46 view .LVU378
+ 1158 028c 78EEE77A 		vsub.f32	s15, s17, s15
+ 1159 0290 17EE900A 		vmov	r0, s15
+ 1160 0294 FFF7FEFF 		bl	__aeabi_f2d
+ 1161              	.LVL96:
+ 1162 0298 41EC100B 		vmov	d0, r0, r1
+ 1163 029c FFF7FEFF 		bl	sqrt
+ 1164              	.LVL97:
+ 1165 02a0 53EC102B 		vmov	r2, r3, d0
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1166              		.loc 1 297 44 discriminator 1 view .LVU379
+ 1167 02a4 3046     		mov	r0, r6
+ 1168 02a6 3946     		mov	r1, r7
+ 1169 02a8 FFF7FEFF 		bl	__aeabi_dadd
+ 1170              	.LVL98:
+ 1171 02ac 0646     		mov	r6, r0
+ 1172 02ae 0F46     		mov	r7, r1
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1173              		.loc 1 297 76 discriminator 1 view .LVU380
+ 1174 02b0 79EE097A 		vadd.f32	s15, s18, s18
+ 1175 02b4 17EE900A 		vmov	r0, s15
+ 1176 02b8 FFF7FEFF 		bl	__aeabi_f2d
+ 1177              	.LVL99:
+ 1178 02bc 0246     		mov	r2, r0
+ 1179 02be 0B46     		mov	r3, r1
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1180              		.loc 1 297 71 discriminator 1 view .LVU381
+ 1181 02c0 3046     		mov	r0, r6
+ 1182 02c2 3946     		mov	r1, r7
+ 1183 02c4 FFF7FEFF 		bl	__aeabi_ddiv
+ 1184              	.LVL100:
+ 1185 02c8 FFF7FEFF 		bl	__aeabi_d2f
+ 1186              	.LVL101:
+ 1187 02cc 07EE900A 		vmov	s15, r0
+ 297:modules/motor/power_control.c ****                 if (power_control_out[i] > 15000)
+ 1188              		.loc 1 297 38 discriminator 1 view .LVU382
+ 1189 02d0 0A4B     		ldr	r3, .L82+8
+ 1190 02d2 03EB8403 		add	r3, r3, r4, lsl #2
+ 1191 02d6 1860     		str	r0, [r3]	@ float
+ 298:modules/motor/power_control.c ****                 {
+ 1192              		.loc 1 298 17 is_stmt 1 view .LVU383
+ 298:modules/motor/power_control.c ****                 {
+ 1193              		.loc 1 298 20 is_stmt 0 view .LVU384
+ 1194 02d8 9FED177A 		vldr.32	s14, .L82+68
+ 1195 02dc F4EEC77A 		vcmpe.f32	s15, s14
+ 1196 02e0 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 1197 02e4 80DD     		ble	.L57
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 30
+
+
+ 300:modules/motor/power_control.c ****                 }
+ 1198              		.loc 1 300 21 is_stmt 1 view .LVU385
+ 300:modules/motor/power_control.c ****                 }
+ 1199              		.loc 1 300 42 is_stmt 0 view .LVU386
+ 1200 02e6 054B     		ldr	r3, .L82+8
+ 1201 02e8 03EB8403 		add	r3, r3, r4, lsl #2
+ 1202 02ec 83ED007A 		vstr.32	s14, [r3]
+ 1203 02f0 7AE7     		b	.L57
+ 1204              	.L83:
+ 1205 02f2 00BF     		.align	2
+ 1206              	.L82:
+ 1207 02f4 00000000 		.word	initial_total_power
+ 1208 02f8 00000000 		.word	initial_torque
+ 1209 02fc 00000000 		.word	power_control_out
+ 1210 0300 00000000 		.word	K1
+ 1211 0304 00000000 		.word	A
+ 1212 0308 00000000 		.word	K2
+ 1213 030c 00000000 		.word	B
+ 1214 0310 BEADB23B 		.word	1001565630
+ 1215 0314 0000C039 		.word	968884224
+ 1216 0318 00000000 		.word	C
+ 1217 031c 00000000 		.word	constant
+ 1218 0320 00000000 		.word	initial_give_power
+ 1219 0324 00000000 		.word	idx
+ 1220 0328 00000000 		.word	dji_motor_instance
+ 1221 032c 00000000 		.word	chassis_max_power
+ 1222 0330 00606AC6 		.word	-966107136
+ 1223 0334 4F020636 		.word	906363471
+ 1224 0338 00606A46 		.word	1181376512
+ 1225              	.LVL102:
+ 1226              	.L63:
+ 300:modules/motor/power_control.c ****                 }
+ 1227              		.loc 1 300 42 view .LVU387
+ 1228              	.LBE11:
+ 1229              	.LBE9:
+ 1230              	.LBE8:
+ 1231              	.LBB13:
+ 309:modules/motor/power_control.c ****                 }
+ 310:modules/motor/power_control.c ****             }
+ 311:modules/motor/power_control.c ****         }
+ 312:modules/motor/power_control.c ****     }
+ 313:modules/motor/power_control.c **** 
+ 314:modules/motor/power_control.c ****     for (uint8_t i = 0; i < idx; i++)
+ 1232              		.loc 1 314 35 is_stmt 1 discriminator 2 view .LVU388
+ 1233 033c 0133     		adds	r3, r3, #1
+ 1234              	.LVL103:
+ 1235              		.loc 1 314 35 is_stmt 0 discriminator 2 view .LVU389
+ 1236 033e DBB2     		uxtb	r3, r3
+ 1237              	.LVL104:
+ 1238              	.L64:
+ 1239              		.loc 1 314 27 is_stmt 1 discriminator 1 view .LVU390
+ 1240 0340 9D42     		cmp	r5, r3
+ 1241 0342 30D9     		bls	.L80
+ 315:modules/motor/power_control.c ****     {
+ 316:modules/motor/power_control.c ****         motor = dji_motor_instance[i];
+ 1242              		.loc 1 316 9 view .LVU391
+ 1243              		.loc 1 316 15 is_stmt 0 view .LVU392
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 31
+
+
+ 1244 0344 234A     		ldr	r2, .L84
+ 1245 0346 52F82340 		ldr	r4, [r2, r3, lsl #2]
+ 1246              	.LVL105:
+ 317:modules/motor/power_control.c ****         set = (int16_t)power_control_out[i];
+ 1247              		.loc 1 317 9 is_stmt 1 view .LVU393
+ 1248              		.loc 1 317 41 is_stmt 0 view .LVU394
+ 1249 034a 234A     		ldr	r2, .L84+4
+ 1250 034c 02EB8302 		add	r2, r2, r3, lsl #2
+ 1251 0350 D2ED007A 		vldr.32	s15, [r2]
+ 1252              		.loc 1 317 13 view .LVU395
+ 1253 0354 FDEEE77A 		vcvt.s32.f32	s15, s15
+ 1254 0358 17EE900A 		vmov	r0, s15	@ int
+ 1255              	.LVL106:
+ 318:modules/motor/power_control.c ****         group = motor->sender_group;
+ 1256              		.loc 1 318 9 is_stmt 1 view .LVU396
+ 1257              		.loc 1 318 15 is_stmt 0 view .LVU397
+ 1258 035c 94F8A411 		ldrb	r1, [r4, #420]	@ zero_extendqisi2
+ 1259              	.LVL107:
+ 319:modules/motor/power_control.c ****         num = motor->message_num;
+ 1260              		.loc 1 319 9 is_stmt 1 view .LVU398
+ 1261              		.loc 1 319 13 is_stmt 0 view .LVU399
+ 1262 0360 94F8A5E1 		ldrb	lr, [r4, #421]	@ zero_extendqisi2
+ 1263              	.LVL108:
+ 320:modules/motor/power_control.c ****         sender_assignment[group].tx_buff[2 * num] = (uint8_t)(set >> 8);         // 低八位
+ 1264              		.loc 1 320 9 is_stmt 1 view .LVU400
+ 1265              		.loc 1 320 44 is_stmt 0 view .LVU401
+ 1266 0364 4FEA4E0C 		lsl	ip, lr, #1
+ 1267              		.loc 1 320 53 view .LVU402
+ 1268 0368 C0F30727 		ubfx	r7, r0, #8, #8
+ 1269              		.loc 1 320 51 view .LVU403
+ 1270 036c 01EB8116 		add	r6, r1, r1, lsl #6
+ 1271 0370 1A4A     		ldr	r2, .L84+8
+ 1272 0372 3244     		add	r2, r2, r6
+ 1273 0374 02EB4E06 		add	r6, r2, lr, lsl #1
+ 1274 0378 86F82470 		strb	r7, [r6, #36]
+ 321:modules/motor/power_control.c ****         sender_assignment[group].tx_buff[2 * num + 1] = (uint8_t)(set & 0x00ff); // 高八位
+ 1275              		.loc 1 321 9 is_stmt 1 view .LVU404
+ 1276              		.loc 1 321 50 is_stmt 0 view .LVU405
+ 1277 037c 0CF1010C 		add	ip, ip, #1
+ 1278              		.loc 1 321 55 view .LVU406
+ 1279 0380 6244     		add	r2, r2, ip
+ 1280 0382 82F82400 		strb	r0, [r2, #36]
+ 322:modules/motor/power_control.c **** 
+ 323:modules/motor/power_control.c ****         // 若该电机处于停止状态,直接将buff置零
+ 324:modules/motor/power_control.c ****         if (motor->stop_flag == MOTOR_STOP)
+ 1281              		.loc 1 324 9 is_stmt 1 view .LVU407
+ 1282              		.loc 1 324 18 is_stmt 0 view .LVU408
+ 1283 0386 94F8A721 		ldrb	r2, [r4, #423]	@ zero_extendqisi2
+ 1284              		.loc 1 324 12 view .LVU409
+ 1285 038a 002A     		cmp	r2, #0
+ 1286 038c D6D1     		bne	.L63
+ 325:modules/motor/power_control.c ****             memset(sender_assignment[group].tx_buff + 2 * num, 0, sizeof(uint16_t));
+ 1287              		.loc 1 325 13 is_stmt 1 view .LVU410
+ 1288              		.loc 1 325 20 is_stmt 0 view .LVU411
+ 1289 038e 01EB8112 		add	r2, r1, r1, lsl #6
+ 1290 0392 2032     		adds	r2, r2, #32
+ 1291 0394 1149     		ldr	r1, .L84+8
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 32
+
+
+ 1292 0396 0A44     		add	r2, r2, r1
+ 1293 0398 0432     		adds	r2, r2, #4
+ 1294              		.loc 1 325 13 view .LVU412
+ 1295 039a 0021     		movs	r1, #0
+ 1296 039c 22F81E10 		strh	r1, [r2, lr, lsl #1]	@ unaligned
+ 1297              	.LVL109:
+ 1298              		.loc 1 325 13 view .LVU413
+ 1299 03a0 CCE7     		b	.L63
+ 1300              	.LVL110:
+ 1301              	.L54:
+ 1302              		.loc 1 325 13 view .LVU414
+ 1303              	.LBE13:
+ 1304              	.LBB14:
+ 1305              	.LBB12:
+ 282:modules/motor/power_control.c ****         {
+ 1306              		.loc 1 282 22 view .LVU415
+ 1307 03a2 0023     		movs	r3, #0
+ 1308 03a4 CCE7     		b	.L64
+ 1309              	.LVL111:
+ 1310              	.L80:
+ 282:modules/motor/power_control.c ****         {
+ 1311              		.loc 1 282 22 view .LVU416
+ 1312              	.LBE12:
+ 1313              	.LBE14:
+ 1314              	.LBB15:
+ 326:modules/motor/power_control.c ****     }
+ 327:modules/motor/power_control.c **** 
+ 328:modules/motor/power_control.c ****     // 遍历flag,检查是否要发送这一帧报文
+ 329:modules/motor/power_control.c ****     for (size_t i = 0; i < 6; ++i)
+ 1315              		.loc 1 329 17 view .LVU417
+ 1316 03a6 0024     		movs	r4, #0
+ 1317 03a8 00E0     		b	.L66
+ 1318              	.LVL112:
+ 1319              	.L67:
+ 1320              		.loc 1 329 31 is_stmt 1 discriminator 2 view .LVU418
+ 1321 03aa 0134     		adds	r4, r4, #1
+ 1322              	.LVL113:
+ 1323              	.L66:
+ 1324              		.loc 1 329 26 discriminator 1 view .LVU419
+ 1325 03ac 052C     		cmp	r4, #5
+ 1326 03ae 0CD8     		bhi	.L81
+ 330:modules/motor/power_control.c ****     {
+ 331:modules/motor/power_control.c ****         if (sender_enable_flag[i])
+ 1327              		.loc 1 331 9 view .LVU420
+ 1328              		.loc 1 331 31 is_stmt 0 view .LVU421
+ 1329 03b0 0B4B     		ldr	r3, .L84+12
+ 1330 03b2 1B5D     		ldrb	r3, [r3, r4]	@ zero_extendqisi2
+ 1331              		.loc 1 331 12 view .LVU422
+ 1332 03b4 002B     		cmp	r3, #0
+ 1333 03b6 F8D0     		beq	.L67
+ 332:modules/motor/power_control.c ****         {
+ 333:modules/motor/power_control.c ****             CANTransmit(&sender_assignment[i], 1);
+ 1334              		.loc 1 333 13 is_stmt 1 view .LVU423
+ 1335 03b8 04EB8410 		add	r0, r4, r4, lsl #6
+ 1336 03bc B7EE000A 		vmov.f32	s0, #1.0e+0
+ 1337 03c0 064B     		ldr	r3, .L84+8
+ 1338 03c2 1844     		add	r0, r0, r3
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 33
+
+
+ 1339 03c4 FFF7FEFF 		bl	CANTransmit
+ 1340              	.LVL114:
+ 1341 03c8 EFE7     		b	.L67
+ 1342              	.L81:
+ 1343              	.LBE15:
+ 334:modules/motor/power_control.c ****         }
+ 335:modules/motor/power_control.c ****     }
+ 336:modules/motor/power_control.c **** }
+ 1344              		.loc 1 336 1 is_stmt 0 view .LVU424
+ 1345 03ca BDEC048B 		vldm	sp!, {d8-d9}
+ 1346              	.LCFI8:
+ 1347              		.cfi_restore 82
+ 1348              		.cfi_restore 83
+ 1349              		.cfi_restore 80
+ 1350              		.cfi_restore 81
+ 1351              		.cfi_def_cfa_offset 32
+ 1352 03ce BDE8F883 		pop	{r3, r4, r5, r6, r7, r8, r9, pc}
+ 1353              	.LVL115:
+ 1354              	.L85:
+ 1355              		.loc 1 336 1 view .LVU425
+ 1356 03d2 00BF     		.align	2
+ 1357              	.L84:
+ 1358 03d4 00000000 		.word	dji_motor_instance
+ 1359 03d8 00000000 		.word	power_control_out
+ 1360 03dc 00000000 		.word	sender_assignment
+ 1361 03e0 00000000 		.word	sender_enable_flag
+ 1362              		.cfi_endproc
+ 1363              	.LFE276:
+ 1365              		.section	.bss.sender_enable_flag,"aw",%nobits
+ 1366              		.align	2
+ 1369              	sender_enable_flag:
+ 1370 0000 00000000 		.space	6
+ 1370      0000
+ 1371              		.section	.data.sender_assignment,"aw"
+ 1372              		.align	2
+ 1375              	sender_assignment:
+ 1376 0000 00000000 		.word	hcan1
+ 1377 0004 FF010000 		.word	511
+ 1378 0008 00000000 		.space	4
+ 1379 000c 00000000 		.word	0
+ 1380 0010 00000000 		.word	0
+ 1381 0014 08000000 		.word	8
+ 1382 0018 00000000 		.space	4
+ 1383 001c 00000000 		.space	8
+ 1383      00000000 
+ 1384 0024 0000     		.ascii	"\000\000"
+ 1385 0026 00000000 		.space	6
+ 1385      0000
+ 1386 002c 00000000 		.space	21
+ 1386      00000000 
+ 1386      00000000 
+ 1386      00000000 
+ 1386      00000000 
+ 1387 0041 00000000 		.4byte	hcan1
+ 1388 0045 00020000 		.4byte	512
+ 1389 0049 00000000 		.space	4
+ 1390 004d 00000000 		.4byte	0
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 34
+
+
+ 1391 0051 00000000 		.4byte	0
+ 1392 0055 08000000 		.4byte	8
+ 1393 0059 00000000 		.space	4
+ 1394 005d 00000000 		.space	8
+ 1394      00000000 
+ 1395 0065 0000     		.ascii	"\000\000"
+ 1396 0067 00000000 		.space	6
+ 1396      0000
+ 1397 006d 00000000 		.space	21
+ 1397      00000000 
+ 1397      00000000 
+ 1397      00000000 
+ 1397      00000000 
+ 1398 0082 00000000 		.4byte	hcan1
+ 1399 0086 FF020000 		.4byte	767
+ 1400 008a 00000000 		.space	4
+ 1401 008e 00000000 		.4byte	0
+ 1402 0092 00000000 		.4byte	0
+ 1403 0096 08000000 		.4byte	8
+ 1404 009a 00000000 		.space	4
+ 1405 009e 00000000 		.space	8
+ 1405      00000000 
+ 1406 00a6 0000     		.ascii	"\000\000"
+ 1407 00a8 00000000 		.space	6
+ 1407      0000
+ 1408 00ae 00000000 		.space	21
+ 1408      00000000 
+ 1408      00000000 
+ 1408      00000000 
+ 1408      00000000 
+ 1409 00c3 00000000 		.4byte	hcan2
+ 1410 00c7 FF010000 		.4byte	511
+ 1411 00cb 00000000 		.space	4
+ 1412 00cf 00000000 		.4byte	0
+ 1413 00d3 00000000 		.4byte	0
+ 1414 00d7 08000000 		.4byte	8
+ 1415 00db 00000000 		.space	4
+ 1416 00df 00000000 		.space	8
+ 1416      00000000 
+ 1417 00e7 0000     		.ascii	"\000\000"
+ 1418 00e9 00000000 		.space	6
+ 1418      0000
+ 1419 00ef 00000000 		.space	21
+ 1419      00000000 
+ 1419      00000000 
+ 1419      00000000 
+ 1419      00000000 
+ 1420 0104 00000000 		.word	hcan2
+ 1421 0108 00020000 		.word	512
+ 1422 010c 00000000 		.space	4
+ 1423 0110 00000000 		.word	0
+ 1424 0114 00000000 		.word	0
+ 1425 0118 08000000 		.word	8
+ 1426 011c 00000000 		.space	4
+ 1427 0120 00000000 		.space	8
+ 1427      00000000 
+ 1428 0128 0000     		.ascii	"\000\000"
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 35
+
+
+ 1429 012a 00000000 		.space	6
+ 1429      0000
+ 1430 0130 00000000 		.space	21
+ 1430      00000000 
+ 1430      00000000 
+ 1430      00000000 
+ 1430      00000000 
+ 1431 0145 00000000 		.4byte	hcan2
+ 1432 0149 FF020000 		.4byte	767
+ 1433 014d 00000000 		.space	4
+ 1434 0151 00000000 		.4byte	0
+ 1435 0155 00000000 		.4byte	0
+ 1436 0159 08000000 		.4byte	8
+ 1437 015d 00000000 		.space	4
+ 1438 0161 00000000 		.space	8
+ 1438      00000000 
+ 1439 0169 0000     		.ascii	"\000\000"
+ 1440 016b 00000000 		.space	6
+ 1440      0000
+ 1441 0171 00000000 		.space	21
+ 1441      00000000 
+ 1441      00000000 
+ 1441      00000000 
+ 1441      00000000 
+ 1442              		.section	.bss.initial_total_power,"aw",%nobits
+ 1443              		.align	2
+ 1446              	initial_total_power:
+ 1447 0000 00000000 		.space	4
+ 1448              		.section	.bss.chassis_max_power,"aw",%nobits
+ 1449              		.align	2
+ 1452              	chassis_max_power:
+ 1453 0000 00000000 		.space	4
+ 1454              		.section	.bss.initial_give_power,"aw",%nobits
+ 1455              		.align	2
+ 1458              	initial_give_power:
+ 1459 0000 00000000 		.space	16
+ 1459      00000000 
+ 1459      00000000 
+ 1459      00000000 
+ 1460              		.section	.bss.power_control_out,"aw",%nobits
+ 1461              		.align	2
+ 1464              	power_control_out:
+ 1465 0000 00000000 		.space	16
+ 1465      00000000 
+ 1465      00000000 
+ 1465      00000000 
+ 1466              		.section	.bss.C,"aw",%nobits
+ 1467              		.align	2
+ 1470              	C:
+ 1471 0000 00000000 		.space	4
+ 1472              		.section	.bss.B,"aw",%nobits
+ 1473              		.align	2
+ 1476              	B:
+ 1477 0000 00000000 		.space	4
+ 1478              		.section	.bss.A,"aw",%nobits
+ 1479              		.align	2
+ 1482              	A:
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 36
+
+
+ 1483 0000 00000000 		.space	4
+ 1484              		.section	.bss.initial_torque,"aw",%nobits
+ 1485              		.align	2
+ 1488              	initial_torque:
+ 1489 0000 00000000 		.space	16
+ 1489      00000000 
+ 1489      00000000 
+ 1489      00000000 
+ 1490              		.section	.bss.dji_motor_instance,"aw",%nobits
+ 1491              		.align	2
+ 1494              	dji_motor_instance:
+ 1495 0000 00000000 		.space	48
+ 1495      00000000 
+ 1495      00000000 
+ 1495      00000000 
+ 1495      00000000 
+ 1496              		.section	.bss.idx,"aw",%nobits
+ 1499              	idx:
+ 1500 0000 00       		.space	1
+ 1501              		.global	constant
+ 1502              		.section	.rodata.constant,"a"
+ 1503              		.align	2
+ 1506              	constant:
+ 1507 0000 8D978240 		.word	1082300301
+ 1508 0004 8D978240 		.word	1082300301
+ 1509 0008 8D978240 		.word	1082300301
+ 1510 000c 8D978240 		.word	1082300301
+ 1511              		.global	K2
+ 1512              		.section	.rodata.K2,"a"
+ 1513              		.align	2
+ 1516              	K2:
+ 1517 0000 C3031C34 		.word	874251203
+ 1518 0004 C3031C34 		.word	874251203
+ 1519 0008 C3031C34 		.word	874251203
+ 1520 000c C3031C34 		.word	874251203
+ 1521              		.global	K1
+ 1522              		.section	.rodata.K1,"a"
+ 1523              		.align	2
+ 1526              	K1:
+ 1527 0000 FC110434 		.word	872681980
+ 1528 0004 FC110434 		.word	872681980
+ 1529 0008 FC110434 		.word	872681980
+ 1530 000c FC110434 		.word	872681980
+ 1531              		.text
+ 1532              	.Letext0:
+ 1533              		.file 2 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 1534              		.file 3 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 1535              		.file 4 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h"
+ 1536              		.file 5 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h"
+ 1537              		.file 6 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.2.
+ 1538              		.file 7 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_can.h"
+ 1539              		.file 8 "Inc/can.h"
+ 1540              		.file 9 "bsp/can/bsp_can.h"
+ 1541              		.file 10 "modules/algorithm/controller.h"
+ 1542              		.file 11 "modules/motor/motor_def.h"
+ 1543              		.file 12 "modules/daemon/daemon.h"
+ 1544              		.file 13 "modules/motor/DJImotor/dji_motor.h"
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 37
+
+
+ 1545              		.file 14 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/math
+ 1546              		.file 15 "bsp/dwt/bsp_dwt.h"
+ 1547              		.file 16 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/stri
+ 1548              		.file 17 "D:/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi/arm-none-eabi/include/stdl
+ 1549              		.file 18 "<built-in>"
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 38
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 power_control.c
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:21     .text.MotorSenderGrouping:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:26     .text.MotorSenderGrouping:00000000 MotorSenderGrouping
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:309    .text.MotorSenderGrouping:00000108 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1369   .bss.sender_enable_flag:00000000 sender_enable_flag
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1499   .bss.idx:00000000 idx
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1494   .bss.dji_motor_instance:00000000 dji_motor_instance
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:317    .text.DJIMotorLostCallback:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:322    .text.DJIMotorLostCallback:00000000 DJIMotorLostCallback
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:339    .text.DecodeDJIMotor:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:344    .text.DecodeDJIMotor:00000000 DecodeDJIMotor
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:500    .text.DecodeDJIMotor:000000f4 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:509    .text.SetPowerLimit:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:515    .text.SetPowerLimit:00000000 SetPowerLimit
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:532    .text.SetPowerLimit:00000008 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1452   .bss.chassis_max_power:00000000 chassis_max_power
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:537    .text.PowerControlInit:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:543    .text.PowerControlInit:00000000 PowerControlInit
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:688    .text.PowerControlInit:000000c0 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:696    .text.PowerControl:00000000 $t
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:702    .text.PowerControl:00000000 PowerControl
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1207   .text.PowerControl:000002f4 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1446   .bss.initial_total_power:00000000 initial_total_power
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1488   .bss.initial_torque:00000000 initial_torque
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1464   .bss.power_control_out:00000000 power_control_out
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1526   .rodata.K1:00000000 K1
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1482   .bss.A:00000000 A
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1516   .rodata.K2:00000000 K2
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1476   .bss.B:00000000 B
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1470   .bss.C:00000000 C
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1506   .rodata.constant:00000000 constant
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1458   .bss.initial_give_power:00000000 initial_give_power
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1233   .text.PowerControl:0000033c $t
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1358   .text.PowerControl:000003d4 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1375   .data.sender_assignment:00000000 sender_assignment
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1366   .bss.sender_enable_flag:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1372   .data.sender_assignment:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1443   .bss.initial_total_power:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1449   .bss.chassis_max_power:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1455   .bss.initial_give_power:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1461   .bss.power_control_out:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1467   .bss.C:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1473   .bss.B:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1479   .bss.A:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1485   .bss.initial_torque:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1491   .bss.dji_motor_instance:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1500   .bss.idx:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1503   .rodata.constant:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1513   .rodata.K2:00000000 $d
+C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s:1523   .rodata.K1:00000000 $d
+
+UNDEFINED SYMBOLS
+hcan1
+DaemonReload
+DWT_GetDeltaT
+malloc
+ARM GAS  C:\Users\29237\AppData\Local\Temp\ccaPGs1o.s 			page 39
+
+
+memset
+PIDInit
+CANRegister
+DaemonRegister
+DJIMotorEnable
+PIDCalculate
+__aeabi_f2d
+sqrt
+__aeabi_dsub
+__aeabi_ddiv
+__aeabi_d2f
+__aeabi_dadd
+CANTransmit
+hcan2
