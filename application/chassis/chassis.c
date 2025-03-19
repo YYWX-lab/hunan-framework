@@ -48,7 +48,7 @@ static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据�
 
 static SuperCapInstance *cap;                                       // 超级电容
 static DJIMotorInstance *motor_lf, *motor_rf, *motor_lb, *motor_rb; // left right forward back
-
+// ststic SuperCapInstance *instance;
 /* 用于自旋变速策略的时间变量 */
 // static float t;
 
@@ -113,8 +113,8 @@ void ChassisInit()
     SuperCap_Init_Config_s cap_conf = {
         .can_config = {
             .can_handle = &hcan2,
-            .tx_id = 0x302, // 超级电容默认接收id
-            .rx_id = 0x301, // 超级电容默认发送id,注意tx和rx在其他人看来是反的
+            .tx_id = 0x210, // 超级电容默认接收id
+            .rx_id = 0x211, // 超级电容默认发送id,注意tx和rx在其他人看来是反的
         }};
     cap = SuperCapInit(&cap_conf); // 超级电容初始化
 
@@ -245,7 +245,9 @@ void ChassisTask()
 
     // 根据电机的反馈速度和IMU(如果有)计算真实速度
     EstimateSpeed();
-
+    
+    SuperCapSend(cap,referee_data->GameRobotState.chassis_power_limit);//2025.3.19 add
+    
     // // 获取裁判系统数据   建议将裁判系统与底盘分离，所以此处数据应使用消息中心发送
     // // 我方颜色id小于7是红色,大于7是蓝色,注意这里发送的是对方的颜色, 0:blue , 1:red
     // chassis_feedback_data.enemy_color = referee_data->GameRobotState.robot_id > 7 ? 1 : 0;
